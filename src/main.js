@@ -31,11 +31,12 @@ scene.add(dirLight);
 
 
 // Plano base
-const planeGeometry = new THREE.PlaneGeometry(60, 60);
-const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x008080 });
+const planeGeometry = new THREE.PlaneGeometry(55, 60);
+const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x727272 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 plane.rotation.x = -Math.PI / 2;
 plane.position.y = 0;
+plane.position.x =-2.5;
 scene.add(plane);
 
 
@@ -49,19 +50,21 @@ const loader = new GLTFLoader();
 
 
 
-function modeledificio(z){
-  for(let i=0; i< 3; i++){
-    const edificio = new Modelo(assets.buildings[i], {x: i*5, y: 0, z: z}, 2.5, scene, loader);
+function modeledificio(x,y,z){
+  for (let i = 0; i < 3; i++) {
+    const edificio = new Modelo(assets.buildings[i], {x: i*5+x, y: 0, z: z}, 2.5, scene, loader);
   }
 }
+function modeloCalle(x,y,z){
+    const calle = new Modelo(assets.roads[4], {x: x, y: y, z:5+z}, 2.5, scene, loader);
+  
+}
 
-modeledificio(-5);
-modeledificio(0);
-modeledificio(5);
-modeledificio(10);
-modeledificio(15);
-modeledificio(20);
-modeledificio(25);
+modeledificio(-27.5,0,-27.5);
+modeloCalle(-12.49,0,-32.5);
+modeledificio(-7.49,0,-27.5);
+modeloCalle(7.51,0,-32.5);
+modeledificio(12.51,0,-27.5);
 
 
 
