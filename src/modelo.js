@@ -13,6 +13,7 @@ export class Modelo {
     this.loader = loader;
     this.world = world;
     this.cuerpoFisico = null;
+    this.hitboxVisual = null;
     this.cargar();
   }
 
@@ -40,10 +41,18 @@ export class Modelo {
     this.objeto.updateWorldMatrix(true, true);
 
     const body = new CANNON.Body({ mass: 0 });
+    const hitboxGroup = new THREE.Group();
     const tempPos = new THREE.Vector3();
     const tempQuat = new THREE.Quaternion();
     const tempScale = new THREE.Vector3();
     const worldMatrix = new THREE.Matrix4();
+    const hitboxMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.65,
+      depthTest: false,
+    });
 
     this.objeto.traverse((child) => {
       if (!child.isMesh || !child.geometry || !child.geometry.attributes?.position) return;
@@ -68,12 +77,19 @@ export class Modelo {
       if (vertices.length >= 9 && indices.length >= 3) {
         const shape = new CANNON.Trimesh(vertices, indices);
         body.addShape(shape);
+
+        const hitboxMesh = new THREE.Mesh(geometry, hitboxMaterial);
+        hitboxMesh.renderOrder = 999;
+        hitboxGroup.add(hitboxMesh);
       }
     });
 
     if (body.shapes.length > 0) {
       this.world.addBody(body);
       this.cuerpoFisico = body;
+
+      this.hitboxVisual = hitboxGroup;
+      this.scene.add(this.hitboxVisual);
     }
   }
 }
