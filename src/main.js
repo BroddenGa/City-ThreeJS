@@ -17,11 +17,13 @@ scene.background = new THREE.Color(0xa0a0a0);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 10, 30);
 
+
+//inicializar Cannon.js
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
 });
 
-
+// Renderizador
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
@@ -35,7 +37,6 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
 
-
 // Plano base
 const planeGeometry = new THREE.PlaneGeometry(55, 60);
 const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x727272 });
@@ -45,12 +46,13 @@ plane.position.y = 0;
 plane.position.x =-2.5;
 scene.add(plane);
 
-const groundBody = new CANNON.Body({
-  mass: 0,
-  shape: new CANNON.Plane(),
-});
-groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-world.addBody(groundBody);
+// Cuerpo físico del plano
+// const groundBody = new CANNON.Body({
+//   mass: 0,
+//   shape: new CANNON.Plane(),
+// });
+// groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+// world.addBody(groundBody);
 
 //controles de mouse
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -73,7 +75,7 @@ const loader = new GLTFLoader();
 
 function modeledificio(x,y,z,f,r,n,giro180){
   for (let i = 0; i < f; i++) {
-    new Modelo(assets.buildings[i], {x: i*5+x, y: 0, z: z}, 2.5, scene, loader, world,r?{x: 0, y: giro180 ? Math.PI : Math.PI / (n?2:-2), z: 0}: undefined);
+    new Modelo(assets.buildings[i], {x: i*5+x, y: y, z: z}, 2.5, scene, loader, world,r?{x: 0, y: giro180 ? Math.PI : Math.PI / (n?2:-2), z: 0}: undefined);
   }
 }
 function modeloCallePeatonal(x,y,z){
@@ -91,33 +93,31 @@ function modeloCalley(x,y,z,f,a,r,n,giro180){
 }
 
 
-modeledificio(-27.5,0,-27.5,3);
-modeledificio(-7.49,0,-27.5,3);
-modeledificio(12.51,0,-27.5,3);
-modeledificio(-22.5,0,-17.49,2,true,true,true);
-modeledificio(-7.5,0,-17.49,3,true,true,true);
-modeledificio(12.5,0,-17.49,2,true,true,true);
-modeledificio(-22.5,0,-12.49,2,false,false,false);
-modeledificio(-7.5,0,-12.49,3,false,false,false);
-modeledificio(12.5,0,-12.49,2,false,false,false);
-modeledificio(-22.5,0,-2.49,2,true,true,true);
-modeledificio(-7.5,0,-2.49,3,true,true,true);
-modeledificio(12.5,0,-2.49,2,true,true,true);
-modeledificio(-22.5,0,2.49,2,false,false,false);
-modeledificio(-7.5,0,2.49,3,false,false,false);
-modeledificio(12.5,0,2.49,2,false,false,false);
-modeledificio(-22.5,0,12.49,2,true,true,true);
-modeledificio(-7.5,0,12.49,3,true,true,true);
-modeledificio(12.5,0,12.49,2,true,true,true);
-modeledificio(-22.5,0,17.49,2,false,false,false);
-modeledificio(-7.5,0,17.49,3,false,false,false);
-modeledificio(12.5,0,17.49,2,false,false,false);
-modeledificio(-27.5,0,27.49,3,true,true,true);
-modeledificio(-12.48,0,27.49,3,true,true,true);
-modeledificio(2.48,0,27.49,3,true,true,true);
-modeledificio(12.48,0,27.49,3,true,true,true);
-
-
+modeledificio(-27.5,0.2,-27.5,3);
+modeledificio(-7.49,0.2,-27.5,3);
+modeledificio(12.51,0.2,-27.5,3);
+modeledificio(-22.5,0.2,-17.49,2,true,true,true);
+modeledificio(-7.5,0.2,-17.49,3,true,true,true);
+modeledificio(12.5,0.2,-17.49,2,true,true,true);
+modeledificio(-22.5,0.2,-12.49,2,false,false,false);
+modeledificio(-7.5,0.2,-12.49,3,false,false,false);
+modeledificio(12.5,0.2,-12.49,2,false,false,false);
+modeledificio(-22.5,0.2,-2.49,2,true,true,true);
+modeledificio(-7.5,0.2,-2.49,3,true,true,true);
+modeledificio(12.5,0.2,-2.49,2,true,true,true);
+modeledificio(-22.5,0.2,2.49,2,false,false,false);
+modeledificio(-7.5,0.2,2.49,3,false,false,false);
+modeledificio(12.5,0.2,2.49,2,false,false,false);
+modeledificio(-22.5,0.2,12.49,2,true,true,true);
+modeledificio(-7.5,0.2,12.49,3,true,true,true);
+modeledificio(12.5,0.2,12.49,2,true,true,true);
+modeledificio(-22.5,0.2,17.49,2,false,false,false);
+modeledificio(-7.5,0.2,17.49,3,false,false,false);
+modeledificio(12.5,0.2,17.49,2,false,false,false);
+modeledificio(-27.5,0.2,27.49,3,true,true,true);
+modeledificio(-12.48,0.2,27.49,3,true,true,true);
+modeledificio(2.48,0.2,27.49,3,true,true,true);
+modeledificio(12.48,0.2,27.49,3,true,true,true);
 
 //calles con paso peatonal
 modeloCallePeatonal(-12.49,0,-32.5);
@@ -178,6 +178,7 @@ modeloCallex(-12.49,0,-12.5,1,2,true,true);
 modeloCallex(7.49,0,-12.5,1,2,true);
 modeloCallex(-12.49,0,2.5,1,2,true,true);
 modeloCallex(7.49,0,2.5,1,2,true);
+
 
 
 
