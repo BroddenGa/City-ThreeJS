@@ -3,10 +3,11 @@ import * as CANNON from 'cannon-es';
 
 export class Modelo {
 
-  constructor(url, posicion = {x:0, y:0, z:0}, tamano = 1, scene, loader, world = null) {
+  constructor(url, posicion = {x:0, y:0, z:0}, tamano = 1, scene, loader, world = null, rotacion = {x:0, y:0, z:0}) {
     this.url = url;
     this.posicion = posicion;
     this.tamano = tamano;
+    this.rotacion = rotacion;
     this.objeto = null;
     this.scene = scene;
     this.loader = loader;
@@ -21,6 +22,7 @@ export class Modelo {
       (gltf) => {
         this.objeto = gltf.scene;
         this.objeto.position.set(this.posicion.x, this.posicion.y, this.posicion.z);
+        this.objeto.rotation.set(this.rotacion.x, this.rotacion.y, this.rotacion.z);
         this.objeto.scale.set(this.tamano, this.tamano, this.tamano);
         this.scene.add(this.objeto);
         if (this.world) {

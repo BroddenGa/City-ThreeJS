@@ -78,16 +78,34 @@ function modeledificio(x,y,z){
 }
 function modeloCallePeatonal(x,y,z){
     new Modelo(assets.roads[4], {x: x, y: y, z:5+z}, 2.5, scene, loader, world);
-  
 }
-function modeloCalle(x,y,z){}
+function modeloCalle(x,y,z,f,a,r,n){
+  for(let i = 0; i < f; i++){
+    new Modelo(assets.roads[a], {x: i*5+x, y: y, z:5+z}, 2.5, scene, loader, world, r?{x: 0, y: Math.PI / (n?2:-2), z: 0}: undefined);
+  }
+}
+
+//calles con paso peatonal
+modeloCallePeatonal(-12.49,0,-32.5);
+modeloCallePeatonal(7.51,0,-32.5);
+
 
 modeledificio(-27.5,0,-27.5);
-modeloCallePeatonal(-12.49,0,-32.5);
 modeledificio(-7.49,0,-27.5);
-modeloCallePeatonal(7.51,0,-32.5);
 modeledificio(12.51,0,-27.5);
 
+//calles con giro
+modeloCalle(-27.5,0,-27.49,1,1,false);
+modeloCalle(22.5,0,-27.49,1,1,true,false);
+
+//calles rectas
+modeloCalle(-7.49,0,-27.49,3,0,true);
+modeloCalle(-22.49,0,-27.49,2,0,true);
+modeloCalle(12.49,0,-27.49,2,0,true);
+
+//calle multidireccional
+modeloCalle(-12.49,0,-27.49,1,2,true);
+modeloCalle(7.49,0,-27.49,1,2,true);
 
 
 function animate() {
