@@ -17,7 +17,7 @@ export class Personaje {
     this.distanciaCamara = 3.8;
     this.direccion = { adelante: false, atras: false, izquierda: false, derecha: false };
     this.anguloY = 0;
-    this.pos = new THREE.Vector3(0, 0, 0);
+    this.pos = new THREE.Vector3(8, 2, 0);
     this.modo = false;
     this.mouseActivo = false;
     this.mouseUltimo = { x: 0 };
@@ -36,7 +36,7 @@ export class Personaje {
     this.cuerpoFisico = new CANNON.Body({
       mass: 1,
       shape: new CANNON.Sphere(this.radioCapsula),
-      position: new CANNON.Vec3(this.pos.x, this.radioCapsula, this.pos.z),
+      position: new CANNON.Vec3(this.pos.x, this.pos.y + this.radioCapsula, this.pos.z),
       fixedRotation: true,
       linearDamping: 0.35,
     });
