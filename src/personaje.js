@@ -13,6 +13,12 @@ export class Personaje {
     this.radioCapsula = 0.15;
     this.cuerpoCapsula = 0.4;
     this.alturaPersonaje = this.cuerpoCapsula + this.radioCapsula * 2;
+    this.limitesPlano = {
+      minX: -2.5 - 55 / 2 + this.radioCapsula,
+      maxX: -2.5 + 55 / 2 - this.radioCapsula,
+      minZ: -60 / 2 + this.radioCapsula,
+      maxZ: 60 / 2 - this.radioCapsula,
+    };
     this.alturaCamara = 1.2;
     this.distanciaCamara = 3.8;
     this.direccion = { adelante: false, atras: false, izquierda: false, derecha: false };
@@ -154,6 +160,42 @@ export class Personaje {
     this.enSuelo = false;
   }
 
+  _limitarAlPlano() {
+    const { minX, maxX, minZ, maxZ } = this.limitesPlano;
+
+    if (this.cuerpoFisico) {
+      let tocoBordeX = false;
+      let tocoBordeZ = false;
+
+      if (this.cuerpoFisico.position.x < minX) {
+        this.cuerpoFisico.position.x = minX;
+        tocoBordeX = true;
+      }
+      if (this.cuerpoFisico.position.x > maxX) {
+        this.cuerpoFisico.position.x = maxX;
+        tocoBordeX = true;
+      }
+      if (this.cuerpoFisico.position.z < minZ) {
+        this.cuerpoFisico.position.z = minZ;
+        tocoBordeZ = true;
+      }
+      if (this.cuerpoFisico.position.z > maxZ) {
+        this.cuerpoFisico.position.z = maxZ;
+        tocoBordeZ = true;
+      }
+
+      if (tocoBordeX) this.cuerpoFisico.velocity.x = 0;
+      if (tocoBordeZ) this.cuerpoFisico.velocity.z = 0;
+
+      this.pos.x = this.cuerpoFisico.position.x;
+      this.pos.z = this.cuerpoFisico.position.z;
+      return;
+    }
+
+    this.pos.x = Math.min(maxX, Math.max(minX, this.pos.x));
+    this.pos.z = Math.min(maxZ, Math.max(minZ, this.pos.z));
+  }
+
   actualizar() {
     if (!this.modo) return;
     this._actualizarEstadoSuelo();
@@ -192,6 +234,8 @@ export class Personaje {
         this.pos.y = 0;
       }
     }
+
+    this._limitarAlPlano();
 
     let camOffset = new THREE.Vector3(0, this.alturaCamara, this.distanciaCamara);
     camOffset.applyAxisAngle(new THREE.Vector3(0,1,0), this.anguloY);
