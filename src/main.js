@@ -22,6 +22,8 @@ camera.position.set(0, 10, 30);
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
 });
+world.solver.iterations = 20;
+world.solver.tolerance = 0.001;
 
 // Renderizador
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -46,13 +48,18 @@ plane.position.y = 0;
 plane.position.x =-2.5;
 scene.add(plane);
 
-// Cuerpo físico del plano
-// const groundBody = new CANNON.Body({
-//   mass: 0,
-//   shape: new CANNON.Plane(),
-// });
-// groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-// world.addBody(groundBody);
+// Cuerpo físico del plano (suelo sólido para evitar atravesarlo)
+const groundHalfWidth = 55 / 2;
+const groundHalfDepth = 60 / 2;
+const groundHalfHeight = 0.75;
+const groundBody = new CANNON.Body({
+  mass: 0,
+  shape: new CANNON.Box(
+    new CANNON.Vec3(groundHalfWidth, groundHalfHeight, groundHalfDepth),
+  ),
+  position: new CANNON.Vec3(-2.5, -groundHalfHeight, 0),
+});
+world.addBody(groundBody);
 
 //controles de mouse
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -185,8 +192,8 @@ modeloCallex(7.49,0,2.5,1,2,true);
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
-  world.step(1 / 60, delta, 3);
-  personaje.actualizar();
+  world.step(1 / 120, delta, 10);
+  personaje.actualizar(delta);
   if (!personaje.modo) {
     controls.update();
   }

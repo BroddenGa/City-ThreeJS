@@ -25,7 +25,7 @@ export class Modelo {
         this.objeto.rotation.set(this.rotacion.x, this.rotacion.y, this.rotacion.z);
         this.objeto.scale.set(this.tamano, this.tamano, this.tamano);
         this.scene.add(this.objeto);
-        if (this.world) {
+        if (this.world && this._debeCrearColision()) {
           this._crearColisionTrimesh();
         }
       },
@@ -34,6 +34,11 @@ export class Modelo {
         console.error('Error cargando modelo:', this.url, error);
       }
     );
+  }
+
+  _debeCrearColision() {
+    const esRoad = /\/road_/i.test(this.url);
+    return !esRoad;
   }
 
   _crearColisionTrimesh() {
