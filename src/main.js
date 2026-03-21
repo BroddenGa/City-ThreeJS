@@ -13,7 +13,7 @@ document.querySelector('#app').innerHTML = `
 //inicializar Three.js
 const container = document.getElementById('three-canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0a0a0);
+scene.background = new THREE.Color(0x80BDFF);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 10, 30);
 
