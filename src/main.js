@@ -2,9 +2,15 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { assets } from './assets';
-import { Modelo } from './modelo';
-import { Personaje } from './personaje';
+import { Personaje } from './personaje.js';
+import { callesConGiro, callesMultidireccional, callesPeatonales, callesRectasX, callesRectasY, callesTresDirecciones, edificiosConfig } from './configs.js';
+import {
+  configurarCargaModelos,
+  modeledificio,
+  modeloCallePeatonal,
+  modeloCallex,
+  modeloCalley,
+} from './cargamodels.js';
 
 document.querySelector('#app').innerHTML = `
 <div id="three-canvas-container" style="width: 100vw; height: 100vh;"></div>
@@ -81,136 +87,16 @@ window.addEventListener('keydown', (event) => {
 const personaje = new Personaje(camera, controls, scene, world);
 const loader = new GLTFLoader();
 
-function modeledificio(x,y,z,f,r,n,giro180){
-  for (let i = 0; i < f; i++) {
-    new Modelo(assets.buildings[i], {x: i*5+x, y: y, z: z}, 2.5, scene, loader, world,r?{x: 0, y: giro180 ? Math.PI : Math.PI / (n?2:-2), z: 0}: undefined);
-  }
-}
-function modeloCallePeatonal(x,y,z){
-    new Modelo(assets.roads[4], {x: x, y: y, z:5+z}, 2.5, scene, loader, world);
-}
-function modeloCallex(x,y,z,f,a,r,n,giro180 ){
-  for(let i = 0; i < f; i++){
-    new Modelo(assets.roads[a], {x: i*5+x, y: y, z:5+z}, 2.5, scene, loader, world, r?{x: 0, y: giro180 ? Math.PI : Math.PI / (n?2:-2), z: 0}: undefined);
-  }
-}
-function modeloCalley(x,y,z,f,a,r,n,giro180){
-  for(let i = 0; i < f; i++){
-    new Modelo(assets.roads[a], {x: x, y: y, z:i*5+5+z}, 2.5, scene, loader, world, r?{x: 0, y: giro180 ? Math.PI : Math.PI / (n?2:-2), z: 0}: undefined);
-  }
-}
+configurarCargaModelos({ scene, loader, world });
 
 
-const edificiosConfig = [
-  [-27.5, 0.2, -27.5, 3],
-  [-7.49, 0.2, -27.5, 3],
-  [12.51, 0.2, -27.5, 3],
-  [-22.5, 0.2, -17.49, 2, true, true, true],
-  [-7.5, 0.2, -17.49, 3, true, true, true],
-  [12.5, 0.2, -17.49, 2, true, true, true],
-  [-22.5, 0.2, -12.49, 2, false, false, false],
-  [-7.5, 0.2, -12.49, 3, false, false, false],
-  [12.5, 0.2, -12.49, 2, false, false, false],
-  [-22.5, 0.2, -2.49, 2, true, true, true],
-  [-7.5, 0.2, -2.49, 3, true, true, true],
-  [12.5, 0.2, -2.49, 2, true, true, true],
-  [-22.5, 0.2, 2.49, 2, false, false, false],
-  [-7.5, 0.2, 2.49, 3, false, false, false],
-  [12.5, 0.2, 2.49, 2, false, false, false],
-  [-22.5, 0.2, 12.49, 2, true, true, true],
-  [-7.5, 0.2, 12.49, 3, true, true, true],
-  [12.5, 0.2, 12.49, 2, true, true, true],
-  [-22.5, 0.2, 17.49, 2, false, false, false],
-  [-7.5, 0.2, 17.49, 3, false, false, false],
-  [12.5, 0.2, 17.49, 2, false, false, false],
-  [-27.5, 0.2, 27.49, 3, true, true, true],
-  [-12.48, 0.2, 27.49, 3, true, true, true],
-  [2.48, 0.2, 27.49, 3, true, true, true],
-  [12.48, 0.2, 27.49, 3, true, true, true],
-];
 
 edificiosConfig.forEach((config) => modeledificio(...config));
-
-//calles con paso peatonal
-const callesPeatonales = [
-  [-12.49, 0, -32.5],
-  [7.51, 0, -32.5],
-  [7.51, 0, -22.5],
-  [-12.49, 0, -22.5],
-  [7.51, 0, -7.5],
-  [-12.49, 0, -7.5],
-  [7.51, 0, 7.5],
-  [-12.49, 0, 7.5],
-];
-
 callesPeatonales.forEach(([x, y, z]) => modeloCallePeatonal(x, y, z));
-
-//calles con giro
-const callesConGiro = [
-  [-27.5, 0, -27.49, 1, 1, false],
-  [22.5, 0, -27.49, 1, 1, true, false],
-  [-27.5, 0, 17.49, 1, 1, true, true],
-  [22.5, 0, 17.5, 1, 1, true, true, true],
-];
-
 callesConGiro.forEach((config) => modeloCallex(...config));
-
-//calles rectas
-const callesRectasX = [
-  [-7.49, 0, -27.49, 3, 0, true],
-  [-22.49, 0, -27.49, 2, 0, true],
-  [12.49, 0, -27.49, 2, 0, true],
-  [-22.49, 0, -12.5, 2, 0, true, true],
-  [-7.49, 0, -12.5, 3, 0, true, true],
-  [12.49, 0, -12.5, 2, 0, true, true],
-  [-12.49, 0, -17.5, 1, 0, false, true],
-  [7.49, 0, -17.5, 1, 0, false, true],
-  [-22.49, 0, 2.5, 2, 0, true, true],
-  [-7.49, 0, 2.5, 3, 0, true, true],
-  [12.49, 0, 2.5, 2, 0, true, true],
-  [-12.49, 0, -2.5, 1, 0, false, true],
-  [7.49, 0, -2.5, 1, 0, false, true],
-  [-22.49, 0, 17.5, 2, 0, true, true],
-  [-7.49, 0, 17.5, 3, 0, true, true],
-  [12.49, 0, 17.5, 2, 0, true, true],
-  [-12.49, 0, 12.5, 1, 0, false, true],
-  [7.49, 0, 12.5, 1, 0, false, true],
-];
-
-const callesRectasY = [
-  [-27.5, 0, -22.49, 2, 0, false, true],
-  [22.49, 0, -22.5, 2, 0, false, true],
-  [-27.5, 0, -7.49, 2, 0, false, true],
-  [22.49, 0, -7.5, 2, 0, false, true],
-  [-27.5, 0, 7.5, 2, 0, false, true],
-  [22.49, 0, 7.5, 2, 0, false, true],
-];
-
 callesRectasX.forEach((config) => modeloCallex(...config));
 callesRectasY.forEach((config) => modeloCalley(...config));
-
-//tres direcciones
-const callesTresDirecciones = [
-  [-27.5, 0, -12.5, 1, 3, false, true],
-  [22.5, 0, -12.5, 1, 3, true, true, true],
-  [-27.5, 0, 2.5, 1, 3, false, true],
-  [22.5, 0, 2.5, 1, 3, true, true, true],
-  [-12.5, 0, 17.5, 1, 3, true, true],
-  [7.5, 0, 17.5, 1, 3, true, true],
-];
-
 callesTresDirecciones.forEach((config) => modeloCallex(...config));
-
-//calle multidireccional
-const callesMultidireccional = [
-  [-12.49, 0, -27.49, 1, 2, true],
-  [7.49, 0, -27.49, 1, 2, true],
-  [-12.49, 0, -12.5, 1, 2, true, true],
-  [7.49, 0, -12.5, 1, 2, true],
-  [-12.49, 0, 2.5, 1, 2, true, true],
-  [7.49, 0, 2.5, 1, 2, true],
-];
-
 callesMultidireccional.forEach((config) => modeloCallex(...config));
 
 
