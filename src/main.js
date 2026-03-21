@@ -13,7 +13,8 @@ document.querySelector('#app').innerHTML = `
 //inicializar Three.js
 const container = document.getElementById('three-canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x80BDFF);
+const newLocal = 0x80BDFF;
+scene.background = new THREE.Color(newLocal);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 10, 30);
 
@@ -100,91 +101,117 @@ function modeloCalley(x,y,z,f,a,r,n,giro180){
 }
 
 
-modeledificio(-27.5,0.2,-27.5,3);
-modeledificio(-7.49,0.2,-27.5,3);
-modeledificio(12.51,0.2,-27.5,3);
-modeledificio(-22.5,0.2,-17.49,2,true,true,true);
-modeledificio(-7.5,0.2,-17.49,3,true,true,true);
-modeledificio(12.5,0.2,-17.49,2,true,true,true);
-modeledificio(-22.5,0.2,-12.49,2,false,false,false);
-modeledificio(-7.5,0.2,-12.49,3,false,false,false);
-modeledificio(12.5,0.2,-12.49,2,false,false,false);
-modeledificio(-22.5,0.2,-2.49,2,true,true,true);
-modeledificio(-7.5,0.2,-2.49,3,true,true,true);
-modeledificio(12.5,0.2,-2.49,2,true,true,true);
-modeledificio(-22.5,0.2,2.49,2,false,false,false);
-modeledificio(-7.5,0.2,2.49,3,false,false,false);
-modeledificio(12.5,0.2,2.49,2,false,false,false);
-modeledificio(-22.5,0.2,12.49,2,true,true,true);
-modeledificio(-7.5,0.2,12.49,3,true,true,true);
-modeledificio(12.5,0.2,12.49,2,true,true,true);
-modeledificio(-22.5,0.2,17.49,2,false,false,false);
-modeledificio(-7.5,0.2,17.49,3,false,false,false);
-modeledificio(12.5,0.2,17.49,2,false,false,false);
-modeledificio(-27.5,0.2,27.49,3,true,true,true);
-modeledificio(-12.48,0.2,27.49,3,true,true,true);
-modeledificio(2.48,0.2,27.49,3,true,true,true);
-modeledificio(12.48,0.2,27.49,3,true,true,true);
+const edificiosConfig = [
+  [-27.5, 0.2, -27.5, 3],
+  [-7.49, 0.2, -27.5, 3],
+  [12.51, 0.2, -27.5, 3],
+  [-22.5, 0.2, -17.49, 2, true, true, true],
+  [-7.5, 0.2, -17.49, 3, true, true, true],
+  [12.5, 0.2, -17.49, 2, true, true, true],
+  [-22.5, 0.2, -12.49, 2, false, false, false],
+  [-7.5, 0.2, -12.49, 3, false, false, false],
+  [12.5, 0.2, -12.49, 2, false, false, false],
+  [-22.5, 0.2, -2.49, 2, true, true, true],
+  [-7.5, 0.2, -2.49, 3, true, true, true],
+  [12.5, 0.2, -2.49, 2, true, true, true],
+  [-22.5, 0.2, 2.49, 2, false, false, false],
+  [-7.5, 0.2, 2.49, 3, false, false, false],
+  [12.5, 0.2, 2.49, 2, false, false, false],
+  [-22.5, 0.2, 12.49, 2, true, true, true],
+  [-7.5, 0.2, 12.49, 3, true, true, true],
+  [12.5, 0.2, 12.49, 2, true, true, true],
+  [-22.5, 0.2, 17.49, 2, false, false, false],
+  [-7.5, 0.2, 17.49, 3, false, false, false],
+  [12.5, 0.2, 17.49, 2, false, false, false],
+  [-27.5, 0.2, 27.49, 3, true, true, true],
+  [-12.48, 0.2, 27.49, 3, true, true, true],
+  [2.48, 0.2, 27.49, 3, true, true, true],
+  [12.48, 0.2, 27.49, 3, true, true, true],
+];
+
+edificiosConfig.forEach((config) => modeledificio(...config));
 
 //calles con paso peatonal
-modeloCallePeatonal(-12.49,0,-32.5);
-modeloCallePeatonal(7.51,0,-32.5);
-modeloCallePeatonal(7.51,0,-22.5);
-modeloCallePeatonal(-12.49,0,-22.5);
-modeloCallePeatonal(7.51,0,-7.5);
-modeloCallePeatonal(-12.49,0,-7.5);
-modeloCallePeatonal(7.51,0,7.5);
-modeloCallePeatonal(-12.49,0,7.5);
+const callesPeatonales = [
+  [-12.49, 0, -32.5],
+  [7.51, 0, -32.5],
+  [7.51, 0, -22.5],
+  [-12.49, 0, -22.5],
+  [7.51, 0, -7.5],
+  [-12.49, 0, -7.5],
+  [7.51, 0, 7.5],
+  [-12.49, 0, 7.5],
+];
+
+callesPeatonales.forEach(([x, y, z]) => modeloCallePeatonal(x, y, z));
 
 //calles con giro
-modeloCallex(-27.5,0,-27.49,1,1,false);
-modeloCallex(22.5,0,-27.49,1,1,true,false);
-modeloCallex(-27.5,0,17.49,1,1,true,true);
-modeloCallex(22.5,0,17.5,1,1,true,true,true);
-// modeloCallex(-12.5,0,-27.49,1,1,true,false);
+const callesConGiro = [
+  [-27.5, 0, -27.49, 1, 1, false],
+  [22.5, 0, -27.49, 1, 1, true, false],
+  [-27.5, 0, 17.49, 1, 1, true, true],
+  [22.5, 0, 17.5, 1, 1, true, true, true],
+];
+
+callesConGiro.forEach((config) => modeloCallex(...config));
 
 //calles rectas
-modeloCallex(-7.49,0,-27.49,3,0,true);
-modeloCallex(-22.49,0,-27.49,2,0,true);
-modeloCallex(12.49,0,-27.49,2,0,true);
-modeloCalley(-27.5,0,-22.49,2,0,false,true);
-modeloCallex(-22.49,0,-12.5,2,0,true,true);
-modeloCallex(-7.49,0,-12.5,3,0,true,true);
-modeloCallex(12.49,0,-12.5,2,0,true,true);
-modeloCallex(-12.49,0,-17.5,1,0,false,true);
-modeloCallex(7.49,0,-17.5,1,0,false,true);
-modeloCalley(22.49,0,-22.5,2,0,false,true);
-modeloCalley(-27.5,0,-7.49,2,0,false,true);
-modeloCallex(-22.49,0,2.5,2,0,true,true);
-modeloCallex(-7.49,0,2.5,3,0,true,true);
-modeloCallex(12.49,0,2.5,2,0,true,true);
-modeloCallex(-12.49,0,-2.5,1,0,false,true);
-modeloCallex(7.49,0,-2.5,1,0,false,true);
-modeloCalley(22.49,0,-7.5,2,0,false,true);
-modeloCalley(-27.5,0,7.5,2,0,false,true);
-modeloCallex(-22.49,0,17.5,2,0,true,true);
-modeloCallex(-7.49,0,17.5,3,0,true,true);
-modeloCallex(12.49,0,17.5,2,0,true,true);
-modeloCallex(-12.49,0,12.5,1,0,false,true);
-modeloCallex(7.49,0,12.5,1,0,false,true);
-modeloCalley(22.49,0,7.5,2,0,false,true);
+const callesRectasX = [
+  [-7.49, 0, -27.49, 3, 0, true],
+  [-22.49, 0, -27.49, 2, 0, true],
+  [12.49, 0, -27.49, 2, 0, true],
+  [-22.49, 0, -12.5, 2, 0, true, true],
+  [-7.49, 0, -12.5, 3, 0, true, true],
+  [12.49, 0, -12.5, 2, 0, true, true],
+  [-12.49, 0, -17.5, 1, 0, false, true],
+  [7.49, 0, -17.5, 1, 0, false, true],
+  [-22.49, 0, 2.5, 2, 0, true, true],
+  [-7.49, 0, 2.5, 3, 0, true, true],
+  [12.49, 0, 2.5, 2, 0, true, true],
+  [-12.49, 0, -2.5, 1, 0, false, true],
+  [7.49, 0, -2.5, 1, 0, false, true],
+  [-22.49, 0, 17.5, 2, 0, true, true],
+  [-7.49, 0, 17.5, 3, 0, true, true],
+  [12.49, 0, 17.5, 2, 0, true, true],
+  [-12.49, 0, 12.5, 1, 0, false, true],
+  [7.49, 0, 12.5, 1, 0, false, true],
+];
+
+const callesRectasY = [
+  [-27.5, 0, -22.49, 2, 0, false, true],
+  [22.49, 0, -22.5, 2, 0, false, true],
+  [-27.5, 0, -7.49, 2, 0, false, true],
+  [22.49, 0, -7.5, 2, 0, false, true],
+  [-27.5, 0, 7.5, 2, 0, false, true],
+  [22.49, 0, 7.5, 2, 0, false, true],
+];
+
+callesRectasX.forEach((config) => modeloCallex(...config));
+callesRectasY.forEach((config) => modeloCalley(...config));
 
 //tres direcciones
-modeloCallex(-27.5,0,-12.5,1,3,false,true);
-modeloCallex(22.5,0,-12.5,1,3,true,true,true);
-modeloCallex(-27.5,0,2.5,1,3,false,true);
-modeloCallex(22.5,0,2.5,1,3,true,true,true);
-modeloCallex(-12.5,0,17.5,1,3,true,true);
-modeloCallex(7.5,0,17.5,1,3,true,true);
+const callesTresDirecciones = [
+  [-27.5, 0, -12.5, 1, 3, false, true],
+  [22.5, 0, -12.5, 1, 3, true, true, true],
+  [-27.5, 0, 2.5, 1, 3, false, true],
+  [22.5, 0, 2.5, 1, 3, true, true, true],
+  [-12.5, 0, 17.5, 1, 3, true, true],
+  [7.5, 0, 17.5, 1, 3, true, true],
+];
 
+callesTresDirecciones.forEach((config) => modeloCallex(...config));
 
 //calle multidireccional
-modeloCallex(-12.49,0,-27.49,1,2,true);
-modeloCallex(7.49,0,-27.49,1,2,true);
-modeloCallex(-12.49,0,-12.5,1,2,true,true);
-modeloCallex(7.49,0,-12.5,1,2,true);
-modeloCallex(-12.49,0,2.5,1,2,true,true);
-modeloCallex(7.49,0,2.5,1,2,true);
+const callesMultidireccional = [
+  [-12.49, 0, -27.49, 1, 2, true],
+  [7.49, 0, -27.49, 1, 2, true],
+  [-12.49, 0, -12.5, 1, 2, true, true],
+  [7.49, 0, -12.5, 1, 2, true],
+  [-12.49, 0, 2.5, 1, 2, true, true],
+  [7.49, 0, 2.5, 1, 2, true],
+];
+
+callesMultidireccional.forEach((config) => modeloCallex(...config));
 
 
 
