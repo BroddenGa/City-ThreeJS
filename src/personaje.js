@@ -143,7 +143,7 @@ export class Personaje {
       if (!this.modo) return;
       const dir = TECLA_DIRECCION[e.key.toLowerCase()];
       if (dir) this.direccion[dir] = true;
-      if (e.code === "Space" && !e.repeat && this.cuerpoFisico) {
+      if (e.code === "Space" && !e.repeat && this.cuerpoFisico && this._puedeSaltar()) {
         this.cuerpoFisico.velocity.y = this.fuerzaSalto;
         this.enSuelo = false;
       }
