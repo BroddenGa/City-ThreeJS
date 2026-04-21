@@ -9,6 +9,8 @@ const TECLA_DIRECCION = {
 };
 const EJE_Y = new THREE.Vector3(0, 1, 0);
 
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
 export class Personaje {
   constructor(camera, controls, scene, world = null) {
     Object.assign(this, {
@@ -61,7 +63,7 @@ export class Personaje {
     };
 
     this._crearCuerpoFisico();
-    this._crearVisual();
+    this._cargarModeloVisual();
     this._initEventos();
   }
 
@@ -82,24 +84,48 @@ export class Personaje {
     this.world.addBody(this.cuerpoFisico);
   }
 
-  _crearVisual() {
+  _cargarModeloVisual() {
     if (!this.scene) return;
-    this.visual = new THREE.Mesh(
-      new THREE.CapsuleGeometry(this.radioCapsula, this.cuerpoCapsula, 8, 16),
-      new THREE.MeshStandardMaterial({ color: 0x5b8def }),
+    const loader = new GLTFLoader();
+    loader.load(
+      '/models/characters/gltf/Skeleton_Mage.glb',
+      (gltf) => {
+        this.visual = gltf.scene;
+        this.visual.visible = false;
+        // Ajusta la escala si es necesario
+        this.visual.scale.set(0.2, 0.2, 0.2);
+        this.scene.add(this.visual);
+        this._actualizarVisual();
+      },
+      undefined,
+      (error) => {
+        console.error('Error cargando modelo GLB del personaje:', error);
+      }
     );
-    this.visual.visible = false;
-    this.scene.add(this.visual);
-    this._actualizarVisual();
   }
 
   _actualizarVisual() {
-    if (this.visual)
+    if (this.visual) {
       this.visual.position.set(
         this.pos.x,
-        this.pos.y + this.alturaPersonaje * 0.5 + this.offsetVisualSuelo,
+        this.pos.y + this.alturaPersonaje * 0.5 + this.offsetVisualSuelo - 0.2,
         this.pos.z,
       );
+
+      // Calcular la dirección de movimiento real (WASD)
+      let movX = 0, movZ = 0;
+      if (this.direccion.adelante) movZ -= 1;
+      if (this.direccion.atras) movZ += 1;
+      if (this.direccion.izquierda) movX -= 1;
+      if (this.direccion.derecha) movX += 1;
+      if (movX !== 0 || movZ !== 0) {
+        // Aplica la rotación de cámara al vector de movimiento
+        const dir = new THREE.Vector3(movX, 0, movZ).normalize().applyAxisAngle(EJE_Y, this.anguloY);
+        // El ángulo hacia donde se mueve
+        const anguloMovimiento = Math.atan2(dir.x, dir.z);
+        this.visual.rotation.y = anguloMovimiento;
+      }
+    }
   }
 
   activar() {

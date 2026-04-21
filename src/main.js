@@ -46,7 +46,7 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
 
-// Plano base
+// Plano basenew THREE.MeshStandardMaterial({ color: 0x5b8def }),
 const planeGeometry = new THREE.PlaneGeometry(55, 60);
 const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x727272 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -83,9 +83,15 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
-//creacion de los modelos y personaje
-const personaje = new Personaje(camera, controls, scene, world);
+
+// Loader para modelos GLTF
 const loader = new GLTFLoader();
+
+// Ruta del modelo GLB del personaje
+const modeloPersonajeUrl = '/models/characters/gltf/Skeleton_Mage.glb';
+
+// Creación del personaje con modelo GLB
+const personaje = new Personaje(camera, controls, scene, world, loader, modeloPersonajeUrl);
 
 configurarCargaModelos({ scene, loader, world });
 
