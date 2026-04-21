@@ -31,6 +31,7 @@ const world = new CANNON.World({
 });
 world.solver.iterations = 20;
 world.solver.tolerance = 0.001;
+world.gravity.set(0, -9.82, 0);
 
 // Renderizador
 const renderer = new THREE.WebGLRenderer({ antialias: true });
