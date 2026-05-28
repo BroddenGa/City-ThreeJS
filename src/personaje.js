@@ -20,7 +20,7 @@ export class Personaje {
       world,
       velocidad: 15,
       fuerzaSalto: 5,
-      factorVelocidadAire: 0.55,
+      factorVelocidadAire: 0.85,
       sensibilidadMouse: 0.005,
       radioCapsula: 0.15,
       cuerpoCapsula: 0.4,
@@ -29,7 +29,7 @@ export class Personaje {
       distanciaCamara: 3.8,
       alturaSuelo: 0,
       offsetVisualSuelo: 0.16,
-      distanciaDeteccionSuelo: 0.08,
+      distanciaDeteccionSuelo: 0.12,
       tiempoGraciaSalto: 0.12,
       direccion: {
         adelante: false,
@@ -53,6 +53,21 @@ export class Personaje {
       _mov: new THREE.Vector3(),
       _camOffset: new THREE.Vector3(),
       _lookAt: new THREE.Vector3(),
+      _enPared: false,
+      _normalPared: new THREE.Vector3(),
+      _rayParedDesde: new CANNON.Vec3(),
+      _rayParedHasta: new CANNON.Vec3(),
+      _rayParedResultado: new CANNON.RaycastResult(),
+      _saltosMax: 2,
+      _saltosRestantes: 2,
+      _dashCooldown: 0,
+      _dashTiempoRecarga: 0.25,
+      _dashVel: 35,
+      _fovBase: 70,
+      _fovDash: 0,
+      _velocidadCaidaPared: -2,
+      _aceleracion: 60,
+      _aceleracionAire: 40,
     });
 
     this.limitesPlano = {
@@ -78,7 +93,7 @@ export class Personaje {
         this.pos.z,
       ),
       fixedRotation: true,
-      linearDamping: 0.35,
+      linearDamping: 0.15,
     });
     this.cuerpoFisico.updateMassProperties();
     this.world.addBody(this.cuerpoFisico);
@@ -136,7 +151,7 @@ export class Personaje {
     if (document.pointerLockElement !== document.body) {
       document.body.requestPointerLock?.();
     }
-    if (this.visual) this.visual.visible = true;
+    if (this.visual) this.visual.visible = this.distanciaCamara > 0.01;
     if (this.cuerpoFisico) {
       this.cuerpoFisico.velocity.set(0, 0, 0);
       this.cuerpoFisico.angularVelocity.set(0, 0, 0);
@@ -169,9 +184,33 @@ export class Personaje {
       if (!this.modo) return;
       const dir = TECLA_DIRECCION[e.key.toLowerCase()];
       if (dir) this.direccion[dir] = true;
-      if (e.code === "Space" && !e.repeat && this.cuerpoFisico && this._puedeSaltar()) {
-        this.cuerpoFisico.velocity.y = this.fuerzaSalto;
-        this.enSuelo = false;
+      if (e.code === "Space" && !e.repeat && this.cuerpoFisico) {
+        if (this._puedeSaltar()) {
+          this.cuerpoFisico.velocity.y = this.fuerzaSalto;
+          this.enSuelo = false;
+        } else if (this._saltosRestantes > 0) {
+          this.cuerpoFisico.velocity.y = this.fuerzaSalto;
+          this._saltosRestantes--;
+        } else if (this._enPared) {
+          this.cuerpoFisico.velocity.y = this.fuerzaSalto * 0.85;
+          this.cuerpoFisico.velocity.x += this._normalPared.x * 6;
+          this.cuerpoFisico.velocity.z += this._normalPared.z * 6;
+          this._enPared = false;
+        }
+      }
+      if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && this.cuerpoFisico && this._dashCooldown <= 0) {
+        const d = new THREE.Vector3(0, 0, 0);
+        if (this.direccion.adelante) d.z -= 1;
+        if (this.direccion.atras) d.z += 1;
+        if (this.direccion.izquierda) d.x -= 1;
+        if (this.direccion.derecha) d.x += 1;
+        if (d.lengthSq() === 0) d.set(0, 0, -1);
+        d.normalize().applyAxisAngle(EJE_Y, this.anguloY);
+        this.cuerpoFisico.velocity.x = d.x * this._dashVel;
+        this.cuerpoFisico.velocity.z = d.z * this._dashVel;
+        this.cuerpoFisico.velocity.y = Math.max(this.cuerpoFisico.velocity.y, 1);
+        this._dashCooldown = this._dashTiempoRecarga;
+        this._fovDash = 0.2;
       }
     });
     window.addEventListener("keyup", (e) => {
@@ -238,6 +277,7 @@ export class Personaje {
 
     if (this.enSuelo) {
       this.ultimoTiempoEnSuelo = performance.now() / 1000;
+      this._saltosRestantes = this._saltosMax;
     }
   }
 
@@ -245,6 +285,28 @@ export class Personaje {
     if (this.enSuelo) return true;
     const ahora = performance.now() / 1000;
     return ahora - this.ultimoTiempoEnSuelo <= this.tiempoGraciaSalto;
+  }
+
+  _actualizarEstadoPared() {
+    this._enPared = false;
+    if (this.enSuelo || !this.cuerpoFisico || !this.world) return;
+    const orig = this.cuerpoFisico.position;
+    const r = this.radioCapsula + 0.1;
+    const dirs = [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
+    for (const d of dirs) {
+      this._rayParedDesde.copy(orig);
+      this._rayParedHasta.set(orig.x + d[0]*r, orig.y + d[1]*r, orig.z + d[2]*r);
+      this._rayParedResultado.reset();
+      const hit = this.world.raycastClosest(this._rayParedDesde, this._rayParedHasta, { skipBackfaces: true }, this._rayParedResultado);
+      if (hit && this._rayParedResultado.body && this._rayParedResultado.body.mass === 0) {
+        const n = this._rayParedResultado.hitNormalWorld;
+        if (Math.abs(n.y) < 0.3) {
+          this._enPared = true;
+          this._normalPared.set(-d[0], 0, -d[2]).normalize();
+          break;
+        }
+      }
+    }
   }
 
   _limitarAlPlano() {
@@ -266,17 +328,31 @@ export class Personaje {
   }
 
   _actualizarCamara() {
-    this._camOffset
-      .set(0, this.alturaCamara, this.distanciaCamara)
-      .applyAxisAngle(EJE_Y, this.anguloY);
-    this.camera.position.copy(this.pos).add(this._camOffset);
-    this.camera.lookAt(
-      this._lookAt.set(
+    if (this.distanciaCamara <= 0.01) {
+      this.camera.position.set(
         this.pos.x,
-        this.pos.y + this.alturaPersonaje * 0.5 + this.offsetVisualSuelo,
+        this.pos.y + this.alturaCamara,
         this.pos.z,
-      ),
-    );
+      );
+      this._lookAt.set(0, 0, -1).applyAxisAngle(EJE_Y, this.anguloY);
+      this.camera.lookAt(
+        this.pos.x + this._lookAt.x,
+        this.pos.y + this.alturaCamara + this._lookAt.y,
+        this.pos.z + this._lookAt.z,
+      );
+    } else {
+      this._camOffset
+        .set(0, this.alturaCamara, this.distanciaCamara)
+        .applyAxisAngle(EJE_Y, this.anguloY);
+      this.camera.position.copy(this.pos).add(this._camOffset);
+      this.camera.lookAt(
+        this._lookAt.set(
+          this.pos.x,
+          this.pos.y + this.alturaPersonaje * 0.5 + this.offsetVisualSuelo,
+          this.pos.z,
+        ),
+      );
+    }
   }
 
   actualizar(delta = 1 / 60) {
@@ -284,7 +360,7 @@ export class Personaje {
       if (this.cuerpoFisico) {
         this.pos.set(
           this.cuerpoFisico.position.x,
-          Math.max(this.alturaSuelo, this.cuerpoFisico.position.y - this.radioCapsula),
+        this.cuerpoFisico.position.y - this.radioCapsula,
           this.cuerpoFisico.position.z,
         );
       }
@@ -293,6 +369,12 @@ export class Personaje {
       return;
     }
     this._actualizarEstadoSuelo();
+    this._actualizarEstadoPared();
+    if (this._dashCooldown > 0) this._dashCooldown -= delta;
+
+    if (this._enPared && !this.enSuelo && this.cuerpoFisico && this.cuerpoFisico.velocity.y < 0) {
+      this.cuerpoFisico.velocity.y = Math.max(this.cuerpoFisico.velocity.y, this._velocidadCaidaPared);
+    }
 
     const mov = this._mov.set(0, 0, 0);
     if (this.direccion.adelante) mov.z -= 1;
@@ -300,39 +382,52 @@ export class Personaje {
     if (this.direccion.izquierda) mov.x -= 1;
     if (this.direccion.derecha) mov.x += 1;
 
-    if (mov.lengthSq() > 0) {
-      mov.normalize().applyAxisAngle(EJE_Y, this.anguloY);
-      if (this.cuerpoFisico) {
-        const velObjetivo = this.enSuelo
-          ? this.velocidad
-          : this.velocidad * this.factorVelocidadAire;
-        const dtSeguro = Math.max(1 / 240, delta);
-        const velMaxSegura = (this.radioCapsula * 2.6) / dtSeguro;
-        const vel = Math.min(velObjetivo, velMaxSegura);
-        this.cuerpoFisico.velocity.x = mov.x * vel;
-        this.cuerpoFisico.velocity.z = mov.z * vel;
+    if (this.cuerpoFisico) {
+      const velObj = this.enSuelo ? this.velocidad : this.velocidad * this.factorVelocidadAire;
+      const acel = this.enSuelo ? this._aceleracion : this._aceleracionAire;
+      const factor = 1 - Math.exp(-acel * delta);
+      if (mov.lengthSq() > 0) {
+        mov.normalize().applyAxisAngle(EJE_Y, this.anguloY);
+        const targetX = mov.x * velObj;
+        const targetZ = mov.z * velObj;
+        this.cuerpoFisico.velocity.x += (targetX - this.cuerpoFisico.velocity.x) * factor;
+        this.cuerpoFisico.velocity.z += (targetZ - this.cuerpoFisico.velocity.z) * factor;
       } else {
-        this.pos.add(mov.multiplyScalar(this.velocidad));
+        this.cuerpoFisico.velocity.x *= (1 - factor);
+        this.cuerpoFisico.velocity.z *= (1 - factor);
       }
-    } else if (this.cuerpoFisico) {
-      this.cuerpoFisico.velocity.x = 0;
-      this.cuerpoFisico.velocity.z = 0;
+      const dtSeguro = Math.max(1 / 240, delta);
+      const velMax = (this.radioCapsula * 2.6) / dtSeguro;
+      const vx = this.cuerpoFisico.velocity.x;
+      const vz = this.cuerpoFisico.velocity.z;
+      const speed = Math.sqrt(vx * vx + vz * vz);
+      if (speed > velMax) {
+        const scale = velMax / speed;
+        this.cuerpoFisico.velocity.x *= scale;
+        this.cuerpoFisico.velocity.z *= scale;
+      }
+    } else {
+      if (mov.lengthSq() > 0) {
+        mov.normalize().applyAxisAngle(EJE_Y, this.anguloY);
+        this.pos.add(mov.multiplyScalar(this.velocidad * delta));
+      }
     }
 
     if (this.cuerpoFisico) {
-      const yMin = this.alturaSuelo + this.radioCapsula;
-      if (this.cuerpoFisico.position.y < yMin) {
-        this.cuerpoFisico.position.y = yMin;
-        if (this.cuerpoFisico.velocity.y < 0) this.cuerpoFisico.velocity.y = 0;
-      }
       this.pos.set(
         this.cuerpoFisico.position.x,
-        Math.max(this.alturaSuelo, this.cuerpoFisico.position.y - this.radioCapsula),
+        this.cuerpoFisico.position.y - this.radioCapsula,
         this.cuerpoFisico.position.z,
       );
     }
 
     this._limitarAlPlano();
+    if (this._fovDash > 0) {
+      this.camera.fov = this._fovBase + 15;
+      this._fovDash -= delta;
+      if (this._fovDash <= 0) this.camera.fov = this._fovBase;
+      this.camera.updateProjectionMatrix();
+    }
     this._actualizarCamara();
     this._actualizarVisual();
   }
