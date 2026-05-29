@@ -1,20 +1,13 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const TECLA_DIRECCION = {
-  w: "adelante",
-  s: "atras",
-  a: "izquierda",
-  d: "derecha",
-};
 const EJE_Y = new THREE.Vector3(0, 1, 0);
 const VELOCIDAD_BASE = 10;
 const DASH_TIEMPO_RECARGA = 2.0;
 const DASH_VELOCIDAD = 30;
 const DASH_DURACION = 0.22;
 const SENSIBILIDAD_MOUSE_BASE = 0.1;
-
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class Personaje {
   constructor(camera, controls, scene, world = null) {
@@ -101,7 +94,6 @@ export class Personaje {
     if (this.lockTarget?.tabIndex < 0) this.lockTarget.tabIndex = 0;
     this._crearCuerpoFisico();
     this._cargarModeloVisual();
-    this._initEventos();
   }
 
   _crearCuerpoFisico() {
@@ -257,107 +249,83 @@ export class Personaje {
     }
   }
 
-  _initEventos() {
-    window.addEventListener("keydown", (e) => {
-      if (this.entradaBloqueada) {
-        this._resetDirecciones();
-        return;
-      }
-      const key = e.key.toLowerCase();
-      if (key === "v")
-        return this.modo ? this.desactivar() : this.activar();
-      if (!this.modo) return;
-      this._solicitarBloqueoMouse();
-      const dir = TECLA_DIRECCION[key];
-      if (dir) this.direccion[dir] = true;
-      if (e.code === "Space" && !e.repeat && this.cuerpoFisico) {
-        if (this._puedeSaltar()) {
-          this.cuerpoFisico.velocity.y = this.fuerzaSalto;
-          this.enSuelo = false;
-        } else if (this._saltosRestantes > 0) {
-          this.cuerpoFisico.velocity.y = this.fuerzaSalto;
-          this._saltosRestantes--;
-        } //lse if (this._enPared && !this.enSuelo) {
-        //  this.cuerpoFisico.velocity.y = this.fuerzaSalto * 0.85;
-        //  this.cuerpoFisico.velocity.x += this._normalPared.x * 6;
-        //  this.cuerpoFisico.velocity.z += this._normalPared.z * 6;
-        //  this._enPared = false;
-        //}
-      }
-      if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && this.cuerpoFisico && this._dashCooldown <= 0) {
-        const d = new THREE.Vector3(0, 0, 0);
-        if (this.direccion.adelante) d.z -= 1;
-        if (this.direccion.atras) d.z += 1;
-        if (this.direccion.izquierda) d.x -= 1;
-        if (this.direccion.derecha) d.x += 1;
-        if (d.lengthSq() === 0) d.set(0, 0, -1);
-        d.normalize().applyAxisAngle(EJE_Y, this.anguloY);
-        this._dashDir.copy(d);
-        this._dashActivo = this._dashDuracion;
-        this.cuerpoFisico.velocity.x = d.x * this._dashVel;
-        this.cuerpoFisico.velocity.z = d.z * this._dashVel;
-        this.cuerpoFisico.velocity.y = Math.max(this.cuerpoFisico.velocity.y, 1);
-        this._dashCooldown = this._dashTiempoRecarga;
-        this._fovDash = 0.2;
-      }
-    });
-    window.addEventListener("keyup", (e) => {
-      if (this.entradaBloqueada) {
-        this._resetDirecciones();
-        return;
-      }
-      const dir = TECLA_DIRECCION[e.key.toLowerCase()];
-      if (dir) this.direccion[dir] = false;
-    });
-    window.addEventListener("mousemove", (e) => {
-      if (this.entradaBloqueada) return;
-      if (!this.modo) return;
-      if (!this._mouseEstaBloqueado()) {
-        this.mouseActivo = false;
-        return;
-      }
-      this.mouseActivo = true;
-      this.anguloY -= e.movementX * this.sensibilidadMouse;
-      this.anguloX -= e.movementY * this.sensibilidadMouse;
-      this._limitarPitch();
-    });
-    window.addEventListener("mouseleave", () => {
+  setDireccion(dir, activo) {
+    if (this.entradaBloqueada) {
+      this._resetDirecciones();
+      return;
+    }
+    if (dir in this.direccion) this.direccion[dir] = activo;
+  }
+
+  aplicarMouse(deltaX, deltaY) {
+    if (this.entradaBloqueada) return;
+    if (!this.modo) return;
+    if (!this._mouseEstaBloqueado()) {
       this.mouseActivo = false;
-    });
-    window.addEventListener("click", () => {
-      if (this.entradaBloqueada) return;
-      if (this.modo) this._solicitarBloqueoMouse();
-    });
-    this.lockTarget?.addEventListener?.("pointerdown", (e) => {
-      if (this.entradaBloqueada) return;
-      e.preventDefault();
-      if (this.modo) this._solicitarBloqueoMouse();
-    });
-    window.addEventListener("blur", () => {
+      return;
+    }
+    this.mouseActivo = true;
+    this.anguloY -= deltaX * this.sensibilidadMouse;
+    this.anguloX -= deltaY * this.sensibilidadMouse;
+    this._limitarPitch();
+  }
+
+  manejarMouseFuera() {
+    this.mouseActivo = false;
+  }
+
+  manejarBlur() {
+    this.mouseActivo = false;
+    this._resetDirecciones();
+    this._actualizarCursorMouse();
+  }
+
+  manejarPointerlockChange() {
+    const bloqueado = this._mouseEstaBloqueado();
+    this.mouseActivo = bloqueado;
+    this._actualizarCursorMouse();
+    if (!bloqueado) {
       this.mouseActivo = false;
       this._resetDirecciones();
-      this._actualizarCursorMouse();
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        this.mouseActivo = false;
-        this._resetDirecciones();
-        this._actualizarCursorMouse();
-      }
-    });
-    document.addEventListener("pointerlockchange", () => {
-      const bloqueado = this._mouseEstaBloqueado();
-      this.mouseActivo = bloqueado;
-      this._actualizarCursorMouse();
-      if (!bloqueado) {
-        this.mouseActivo = false;
-        this._resetDirecciones();
-      }
-    });
-    document.addEventListener("pointerlockerror", () => {
-      this.mouseActivo = false;
-      this._actualizarCursorMouse();
-    });
+    }
+  }
+
+  manejarPointerlockError() {
+    this.mouseActivo = false;
+    this._actualizarCursorMouse();
+  }
+
+  intentarSaltar() {
+    if (!this.cuerpoFisico) return;
+    if (this._puedeSaltar()) {
+      this.cuerpoFisico.velocity.y = this.fuerzaSalto;
+      this.enSuelo = false;
+    } else if (this._saltosRestantes > 0) {
+      this.cuerpoFisico.velocity.y = this.fuerzaSalto;
+      this._saltosRestantes--;
+    }
+  }
+
+  intentarDash() {
+    if (!this.cuerpoFisico || this._dashCooldown > 0) return;
+    const d = new THREE.Vector3(0, 0, 0);
+    if (this.direccion.adelante) d.z -= 1;
+    if (this.direccion.atras) d.z += 1;
+    if (this.direccion.izquierda) d.x -= 1;
+    if (this.direccion.derecha) d.x += 1;
+    if (d.lengthSq() === 0) d.set(0, 0, -1);
+    d.normalize().applyAxisAngle(EJE_Y, this.anguloY);
+    this._dashDir.copy(d);
+    this._dashActivo = this._dashDuracion;
+    this.cuerpoFisico.velocity.x = d.x * this._dashVel;
+    this.cuerpoFisico.velocity.z = d.z * this._dashVel;
+    this.cuerpoFisico.velocity.y = Math.max(this.cuerpoFisico.velocity.y, 1);
+    this._dashCooldown = this._dashTiempoRecarga;
+    this._fovDash = 0.2;
+  }
+
+  toggleModo() {
+    return this.modo ? this.desactivar() : this.activar();
   }
 
   _resetDirecciones() {
@@ -474,6 +442,16 @@ export class Personaje {
     }
   }
 
+  _actualizarPosRender() {
+    if (!this.cuerpoFisico) return;
+    const interp = this.cuerpoFisico.interpolatedPosition || this.cuerpoFisico.position;
+    this.pos.set(
+      interp.x,
+      interp.y - this.radioCapsula,
+      interp.z,
+    );
+  }
+
   _actualizarCamara() {
     if (this.distanciaCamara <= 0.01) {
       this.camera.position.set(
@@ -505,13 +483,7 @@ export class Personaje {
 
   actualizar(delta = 1 / 60) {
     if (!this.modo) {
-      if (this.cuerpoFisico) {
-        this.pos.set(
-          this.cuerpoFisico.position.x,
-          this.cuerpoFisico.position.y - this.radioCapsula,
-          this.cuerpoFisico.position.z,
-        );
-      }
+      this._actualizarPosRender();
       this._limitarAlPlano();
       this._actualizarVisual();
       return;
@@ -585,13 +557,7 @@ export class Personaje {
       }
     }
 
-    if (this.cuerpoFisico) {
-      this.pos.set(
-        this.cuerpoFisico.position.x,
-        this.cuerpoFisico.position.y - this.radioCapsula,
-        this.cuerpoFisico.position.z,
-      );
-    }
+    this._actualizarPosRender();
 
     this._limitarAlPlano();
     if (this._fovDash > 0) {

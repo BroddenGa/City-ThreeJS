@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Vite-based Three.js parkour maze game. `index.html` is the browser entry point and loads `src/main.js`. Most scene setup lives in `src/main.js`: maze generation, physics, lighting, HUD, respawn logic, and the render loop. Player movement, camera control, jump, wall-jump, and dash behavior live in `src/personaje.js` as `Personaje`.
+This is a Vite-based Three.js parkour maze game. `index.html` is the browser entry point and loads `src/main.js`. Scene setup is now split into modules under `src/world/` and UI in `src/ui/`, with `src/main.js` orchestrating the game loop and wiring. Procedural maze generation and validation live in `src/world/generator.js`; visual/physics construction lives in `src/world/level.js`. Player movement, camera control, jump, wall-jump, and dash behavior live in `src/player/personaje.js` as `Personaje`, with input bindings in `src/player/input.js`.
 
 Static assets belong in `public/`, especially `public/models/` for GLB, FBX, OBJ, MTL, and texture files. Browser references should use root-relative paths such as `/models/characters/gltf/Skeleton_Mage.glb`. End-to-end tests live in `tests/*.spec.js`. `dist/` is generated and should not be edited manually.
 
@@ -18,7 +18,7 @@ The repo includes both `package-lock.json` and `pnpm-lock.yaml`; prefer `npm` un
 
 ## Coding Style & Naming Conventions
 
-Use ES modules and keep imports at the top. Follow the surrounding JavaScript style: 2-space indentation, semicolons, descriptive helpers, and constants in `UPPER_SNAKE_CASE` for fixed game values such as `CELL`, `WALL_H`, and `MAZE`. Existing gameplay identifiers are mostly Spanish (`Personaje`, `celdaCentro`, `crearPared`), so keep new domain names consistent with nearby code.
+Use ES modules and keep imports at the top. Follow the surrounding JavaScript style: 2-space indentation, semicolons, descriptive helpers, and constants in `UPPER_SNAKE_CASE` for fixed game values such as `CELL`, `WALL_H`, and `MAZE_SIZE`. Existing gameplay identifiers are mostly Spanish (`Personaje`, `cellToWorld`, `crearPared`), so keep new domain names consistent with nearby code.
 
 Keep changes scoped. Avoid mixing gameplay tuning, visual polish, asset swaps, and test refactors in one patch unless they are required for the same behavior.
 
