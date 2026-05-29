@@ -46,6 +46,27 @@ camera.position.set(10, 15, 18);
 
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -14, 0) });
 world.solver.iterations = 20;
+world.defaultContactMaterial.friction = 0.0;
+world.defaultContactMaterial.restitution = 0.0;
+world.playerMaterial = new CANNON.Material("player");
+const wallMaterial = new CANNON.Material("wall");
+const groundMaterial = new CANNON.Material("ground");
+world.addContactMaterial(new CANNON.ContactMaterial(world.playerMaterial, wallMaterial, {
+  friction: 0.0,
+  restitution: 0.0,
+  contactEquationStiffness: 1e8,
+  contactEquationRelaxation: 3,
+  frictionEquationStiffness: 1e6,
+  frictionEquationRelaxation: 3,
+}));
+world.addContactMaterial(new CANNON.ContactMaterial(world.playerMaterial, groundMaterial, {
+  friction: 0.01,
+  restitution: 0.0,
+  contactEquationStiffness: 1e8,
+  contactEquationRelaxation: 3,
+  frictionEquationStiffness: 1e6,
+  frictionEquationRelaxation: 3,
+}));
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -90,7 +111,7 @@ for (let gz = 0; gz < N; gz++) {
     m.position.set(c.x, -0.01, c.z);
     m.receiveShadow = true;
     scene.add(m);
-    const b = new CANNON.Body({ mass: 0 });
+    const b = new CANNON.Body({ mass: 0, material: groundMaterial });
     b.addShape(new CANNON.Box(new CANNON.Vec3(CELL/2, 0.5, CELL/2)));
     b.position.set(c.x, -0.5, c.z);
     world.addBody(b);
@@ -110,7 +131,7 @@ function crearPared(cx, cz, ancho, prof, color) {
   m.castShadow = true;
   m.receiveShadow = true;
   scene.add(m);
-  const b = new CANNON.Body({ mass: 0 });
+  const b = new CANNON.Body({ mass: 0, material: wallMaterial });
   const wallH = WALL_H + 3;
   b.addShape(new CANNON.Box(new CANNON.Vec3(ancho / 2, wallH / 2, prof / 2)));
   b.position.set(cx, wallH / 2 - 1.5, cz);
@@ -145,7 +166,7 @@ function crearSuelo(cx, cy, cz, ancho, prof, color) {
   m.position.set(cx, cy + h / 2, cz);
   m.receiveShadow = true;
   scene.add(m);
-  const b = new CANNON.Body({ mass: 0 });
+  const b = new CANNON.Body({ mass: 0, material: groundMaterial });
   b.addShape(new CANNON.Box(new CANNON.Vec3(ancho / 2, h / 2, prof / 2)));
   b.position.set(cx, cy + h / 2, cz);
   world.addBody(b);
