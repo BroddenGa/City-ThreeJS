@@ -6,6 +6,8 @@ import { Personaje } from './personaje.js';
 const CELL = 3.5;
 const WALL_H = 4.5;
 const WALL_T = 0.25;
+const WALL_COLLISION_EXTRA = 12;
+const RECHARGE_MARGIN = CELL * 0.3;
 
 const MAZE = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -48,6 +50,10 @@ const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -14, 0) });
 world.solver.iterations = 20;
 world.defaultContactMaterial.friction = 0.0;
 world.defaultContactMaterial.restitution = 0.0;
+const GROUP_GROUND = 1;
+const GROUP_WALL = 2;
+const GROUP_PLAYER = 4;
+world.collisionGroups = { ground: GROUP_GROUND, wall: GROUP_WALL, player: GROUP_PLAYER };
 world.playerMaterial = new CANNON.Material("player");
 const wallMaterial = new CANNON.Material("wall");
 const groundMaterial = new CANNON.Material("ground");
@@ -112,6 +118,9 @@ for (let gz = 0; gz < N; gz++) {
     m.receiveShadow = true;
     scene.add(m);
     const b = new CANNON.Body({ mass: 0, material: groundMaterial });
+    b.userData = { tipo: "suelo" };
+    b.collisionFilterGroup = GROUP_GROUND;
+    b.collisionFilterMask = GROUP_PLAYER;
     b.addShape(new CANNON.Box(new CANNON.Vec3(CELL/2, 0.5, CELL/2)));
     b.position.set(c.x, -0.5, c.z);
     world.addBody(b);
@@ -132,7 +141,10 @@ function crearPared(cx, cz, ancho, prof, color) {
   m.receiveShadow = true;
   scene.add(m);
   const b = new CANNON.Body({ mass: 0, material: wallMaterial });
-  const wallH = WALL_H + 3;
+  b.userData = { tipo: "muro" };
+  b.collisionFilterGroup = GROUP_WALL;
+  b.collisionFilterMask = GROUP_PLAYER;
+  const wallH = WALL_H + WALL_COLLISION_EXTRA;
   b.addShape(new CANNON.Box(new CANNON.Vec3(ancho / 2, wallH / 2, prof / 2)));
   b.position.set(cx, wallH / 2 - 1.5, cz);
   world.addBody(b);
@@ -167,6 +179,9 @@ function crearSuelo(cx, cy, cz, ancho, prof, color) {
   m.receiveShadow = true;
   scene.add(m);
   const b = new CANNON.Body({ mass: 0, material: groundMaterial });
+  b.userData = { tipo: "plataforma" };
+  b.collisionFilterGroup = GROUP_GROUND;
+  b.collisionFilterMask = GROUP_PLAYER;
   b.addShape(new CANNON.Box(new CANNON.Vec3(ancho / 2, h / 2, prof / 2)));
   b.position.set(cx, cy + h / 2, cz);
   world.addBody(b);
@@ -238,6 +253,36 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.5, 0);
 
 const personaje = new Personaje(camera, controls, scene, world);
+personaje.reglasRecargaSuelo = {
+  maze: MAZE,
+  origin: ORIGEN,
+  cell: CELL,
+  pits: PITS,
+  margin: RECHARGE_MARGIN,
+};
+window.__debugJump = {
+  get saltosRestantes() {
+    return personaje._saltosRestantes;
+  },
+  get enSuelo() {
+    return personaje.enSuelo;
+  },
+  get sueloValido() {
+    return personaje._sueloValido;
+  },
+  get tocandoMuro() {
+    return personaje._tocandoMuro;
+  },
+  get enPared() {
+    return personaje._enPared;
+  },
+  setSaltosRestantes(value) {
+    personaje._saltosRestantes = value;
+  },
+  get pos() {
+    return { x: personaje.pos.x, y: personaje.pos.y, z: personaje.pos.z };
+  },
+};
 personaje.pos.set(START.x, 0.5, START.z);
 if (personaje.cuerpoFisico) {
   personaje.cuerpoFisico.position.set(START.x, 0.5 + personaje.radioCapsula, START.z);

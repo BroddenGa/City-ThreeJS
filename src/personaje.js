@@ -19,7 +19,7 @@ export class Personaje {
       scene,
       world,
       lockTarget: controls?.domElement ?? document.body,
-      velocidad: 15,
+      velocidad: 11,
       fuerzaSalto: 5,
       factorVelocidadAire: 0.85,
       sensibilidadMouse: 0.002,
@@ -53,18 +53,21 @@ export class Personaje {
       _rayDesde: new CANNON.Vec3(),
       _rayHasta: new CANNON.Vec3(),
       _rayResultado: new CANNON.RaycastResult(),
+      _sueloValido: false,
+      _contactPoint: new CANNON.Vec3(),
       _mov: new THREE.Vector3(),
       _inputDir: new THREE.Vector3(),
       _camOffset: new THREE.Vector3(),
       _lookAt: new THREE.Vector3(),
       _camEuler: new THREE.Euler(0, 0, 0, "YXZ"),
       _enPared: false,
+      _tocandoMuro: false,
       _normalPared: new THREE.Vector3(),
       _rayParedDesde: new CANNON.Vec3(),
       _rayParedHasta: new CANNON.Vec3(),
       _rayParedResultado: new CANNON.RaycastResult(),
-      _saltosMax: 2,
-      _saltosRestantes: 2,
+      _saltosMax: 1,
+      _saltosRestantes: 1,
       _dashCooldown: 0,
       _dashTiempoRecarga: 0.25,
       _dashVel: 35,
@@ -74,6 +77,9 @@ export class Personaje {
       _aceleracion: 60,
       _aceleracionAire: 40,
       _pitchMax: 1.45,
+      _recargaContacto: false,
+      _recargaTimmer: 0,
+      reglasRecargaSuelo: null,
     });
 
     this.limitesPlano = {
@@ -102,6 +108,11 @@ export class Personaje {
       fixedRotation: true,
       linearDamping: 0.15,
     });
+    const groups = this.world.collisionGroups;
+    if (groups) {
+      this.cuerpoFisico.collisionFilterGroup = groups.player;
+      this.cuerpoFisico.collisionFilterMask = groups.ground | groups.wall;
+    }
     this.cuerpoFisico.ccdSpeedThreshold = 6;
     this.cuerpoFisico.ccdIterations = 10;
     this.cuerpoFisico.updateMassProperties();
@@ -152,13 +163,13 @@ export class Personaje {
     }
   }
 
-  activar() {
+  activar({ skipPointerLock = false } = {}) {
     this.modo = true;
     this.controls.enabled = false;
     this.mouseActivo = false;
     this._resetDirecciones();
     document.body.style.cursor = "none";
-    if (document.pointerLockElement !== this.lockTarget) {
+    if (!skipPointerLock && document.pointerLockElement !== this.lockTarget) {
       this.lockTarget.requestPointerLock?.();
     }
     if (this.visual) this.visual.visible = this.distanciaCamara > 0.01;
@@ -203,12 +214,12 @@ export class Personaje {
         } else if (this._saltosRestantes > 0) {
           this.cuerpoFisico.velocity.y = this.fuerzaSalto;
           this._saltosRestantes--;
-        } else if (this._enPared && !this.enSuelo) {
-          this.cuerpoFisico.velocity.y = this.fuerzaSalto * 0.85;
-          this.cuerpoFisico.velocity.x += this._normalPared.x * 6;
-          this.cuerpoFisico.velocity.z += this._normalPared.z * 6;
-          this._enPared = false;
-        }
+        } //lse if (this._enPared && !this.enSuelo) {
+        //  this.cuerpoFisico.velocity.y = this.fuerzaSalto * 0.85;
+        //  this.cuerpoFisico.velocity.x += this._normalPared.x * 6;
+        //  this.cuerpoFisico.velocity.z += this._normalPared.z * 6;
+        //  this._enPared = false;
+        //}
       }
       if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && this.cuerpoFisico && this._dashCooldown <= 0) {
         const d = new THREE.Vector3(0, 0, 0);
@@ -291,41 +302,58 @@ export class Personaje {
   _actualizarEstadoSuelo() {
     if (!this.cuerpoFisico || !this.world) {
       this.enSuelo = this.pos.y <= 0.05;
+      this._sueloValido = this.enSuelo;
       return;
     }
 
-    this.enSuelo = false;
+    let tocandoMuro = false;
+    let sueloDetectado = false;
 
-    this._rayDesde.copy(this.cuerpoFisico.position);
-    this._rayHasta.set(
-      this.cuerpoFisico.position.x,
-      this.cuerpoFisico.position.y -
-        (this.radioCapsula + this.distanciaDeteccionSuelo + 0.02),
-      this.cuerpoFisico.position.z,
-    );
-    this._rayResultado.reset();
+    const contactos = this.world.contacts;
+    for (let i = 0; i < contactos.length; i++) {
+      const c = contactos[i];
+      let normalY = 0;
+      let otro = null;
 
-    const hit = this.world.raycastClosest(
-      this._rayDesde,
-      this._rayHasta,
-      { skipBackfaces: true },
-      this._rayResultado,
-    );
+      if (c.bi === this.cuerpoFisico) {
+        normalY = -c.ni.y;
+        otro = c.bj;
+      } else if (c.bj === this.cuerpoFisico) {
+        normalY = c.ni.y;
+        otro = c.bi;
+      } else {
+        continue;
+      }
 
-    if (hit) {
-      const distancia = this._rayDesde.distanceTo(this._rayResultado.hitPointWorld);
-      const normalY = this._rayResultado.hitNormalWorld.y;
-      this.enSuelo =
-        normalY > 0.45 &&
-        distancia <= this.radioCapsula + this.distanciaDeteccionSuelo;
+      const tipo = otro?.userData?.tipo;
+
+      if (tipo === "muro") {
+        tocandoMuro = true;
+      }
+
+      // Si la normal empuja hacia arriba (>= 0.5 asegura que sea una superficie estable)
+      if (normalY >= 0.5) {
+        // Comprobación estricta: tiene que ser piso explícito
+        if (tipo === "suelo" || tipo === "plataforma") {
+          sueloDetectado = true;
+        }
+      }
     }
 
-    if (this.enSuelo) {
+    this.enSuelo = sueloDetectado;
+    this._sueloValido = sueloDetectado;
+    this._tocandoMuro = tocandoMuro || this._enPared;
+
+    const velOk = Math.abs(this.cuerpoFisico.velocity.y) <= 0.1;
+    const recargaLista = this._recargaTimmer <= 0;
+
+    // Solo recarga si tocamos piso válido y no estamos cayendo
+    if (this.enSuelo && velOk && recargaLista) {
       this.ultimoTiempoEnSuelo = performance.now() / 1000;
       this._saltosRestantes = this._saltosMax;
+      this._recargaTimmer = 0.08;
     }
   }
-
   _puedeSaltar() {
     if (this.enSuelo) return true;
     const ahora = performance.now() / 1000;
@@ -337,10 +365,10 @@ export class Personaje {
     if (!this.cuerpoFisico || !this.world) return;
     const orig = this.cuerpoFisico.position;
     const r = this.radioCapsula + 0.12;
-    const dirs = [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
+    const dirs = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
     for (const d of dirs) {
       this._rayParedDesde.copy(orig);
-      this._rayParedHasta.set(orig.x + d[0]*r, orig.y + d[1]*r, orig.z + d[2]*r);
+      this._rayParedHasta.set(orig.x + d[0] * r, orig.y + d[1] * r, orig.z + d[2] * r);
       this._rayParedResultado.reset();
       const hit = this.world.raycastClosest(this._rayParedDesde, this._rayParedHasta, { skipBackfaces: true }, this._rayParedResultado);
       if (hit && this._rayParedResultado.body && this._rayParedResultado.body.mass === 0) {
@@ -406,7 +434,7 @@ export class Personaje {
       if (this.cuerpoFisico) {
         this.pos.set(
           this.cuerpoFisico.position.x,
-        this.cuerpoFisico.position.y - this.radioCapsula,
+          this.cuerpoFisico.position.y - this.radioCapsula,
           this.cuerpoFisico.position.z,
         );
       }
@@ -417,6 +445,7 @@ export class Personaje {
     this._actualizarEstadoSuelo();
     this._actualizarEstadoPared();
     if (this._dashCooldown > 0) this._dashCooldown -= delta;
+    if (this._recargaTimmer > 0) this._recargaTimmer -= delta;
 
     const mov = this._mov.set(0, 0, 0);
     if (this.direccion.adelante) mov.z -= 1;
