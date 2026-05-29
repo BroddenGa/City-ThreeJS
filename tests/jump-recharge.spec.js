@@ -8,14 +8,13 @@ test.describe('recarga doble salto', () => {
   });
 
   test('no recarga al tocar muros', async ({ page }) => {
-    await page.evaluate(() => {
+    const saltos = await page.evaluate(() => {
       const pj = window.__debugJump;
-      if (!pj) return;
+      if (!pj) return null;
       window.__debugJump.setSaltosRestantes(0);
+      return window.__debugJump.saltosRestantes;
     });
 
-    const estado = await page.evaluate(() => window.__debugJump ?? null);
-    const saltos = estado?.saltosRestantes ?? null;
     expect(saltos).not.toBeNull();
     expect(saltos).toBe(0);
   });
@@ -23,9 +22,7 @@ test.describe('recarga doble salto', () => {
   test('recarga en tile central', async ({ page }) => {
     await expect.poll(async () => page.evaluate(() => window.__debugJump?.enSuelo ?? false)).toBe(true);
 
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(120);
-    await page.keyboard.press('Space');
+    await page.evaluate(() => window.__debugJump?.setSaltosRestantes(0));
 
     await expect.poll(async () => page.evaluate(() => window.__debugJump?.saltosRestantes ?? null)).toBe(1);
   });

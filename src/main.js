@@ -9,6 +9,13 @@ const WALL_T = 0.25;
 const WALL_COLLISION_EXTRA = 12;
 const RECHARGE_MARGIN = CELL * 0.3;
 const PLAYER_SPEED = 12;
+const MOUSE_SENSIBILIDAD_DEFAULT = 0.0022;
+const MOUSE_SENSIBILIDAD_FIREFOX = 0.0034;
+const MOUSE_SENSIBILIDAD_BRAVE = 0.0012;
+const MOUSE_SENSIBILIDAD_KEY = 're-maze-mouse-sensitivity';
+const MOUSE_SENSIBILIDAD_MIN = 0.0006;
+const MOUSE_SENSIBILIDAD_MAX = 0.0200;
+const MOUSE_SENSIBILIDAD_UI_STEP = 0.1;
 
 const MAZE = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -262,6 +269,86 @@ personaje.reglasRecargaSuelo = {
   margin: RECHARGE_MARGIN,
 };
 personaje.entradaBloqueada = true;
+let perfilSensibilidadMouse = 'default';
+let perfilSensibilidadBase = 'default';
+let sensibilidadMouseBase = MOUSE_SENSIBILIDAD_DEFAULT;
+
+function limitarSensibilidadMouse(value) {
+  const sensibilidad = Number(value);
+  if (!Number.isFinite(sensibilidad)) return MOUSE_SENSIBILIDAD_DEFAULT;
+  return Math.min(MOUSE_SENSIBILIDAD_MAX, Math.max(MOUSE_SENSIBILIDAD_MIN, sensibilidad));
+}
+
+function sensibilidadDesdeControl(value) {
+  return limitarSensibilidadMouse(Number(value) / 1000);
+}
+
+function sensibilidadParaControl(value) {
+  return (limitarSensibilidadMouse(value) * 1000).toFixed(1);
+}
+
+function leerSensibilidadGuardada() {
+  const sensibilidad = Number(localStorage.getItem(MOUSE_SENSIBILIDAD_KEY));
+  return Number.isFinite(sensibilidad) ? limitarSensibilidadMouse(sensibilidad) : null;
+}
+
+function actualizarControlSensibilidad() {
+  const input = document.getElementById('config-sensibilidad');
+  const value = document.getElementById('config-sensibilidad-value');
+  const profile = document.getElementById('config-sensibilidad-profile');
+  if (!input || !value || !profile) return;
+  input.value = sensibilidadParaControl(personaje.sensibilidadMouse);
+  value.textContent = sensibilidadParaControl(personaje.sensibilidadMouse);
+  profile.textContent = perfilSensibilidadMouse === 'personalizada'
+    ? 'Personalizada'
+    : `Auto: ${perfilSensibilidadMouse}`;
+}
+
+function aplicarSensibilidadMouse(perfil, sensibilidad, { guardar = false } = {}) {
+  perfilSensibilidadMouse = perfil;
+  personaje.sensibilidadMouse = limitarSensibilidadMouse(sensibilidad);
+  if (guardar) localStorage.setItem(MOUSE_SENSIBILIDAD_KEY, String(personaje.sensibilidadMouse));
+  actualizarControlSensibilidad();
+}
+
+function restablecerSensibilidadMouse() {
+  localStorage.removeItem(MOUSE_SENSIBILIDAD_KEY);
+  aplicarSensibilidadMouse(perfilSensibilidadBase, sensibilidadMouseBase);
+}
+
+async function configurarSensibilidadMouse() {
+  const userAgent = navigator.userAgent;
+  let perfil = 'default';
+  let sensibilidad = MOUSE_SENSIBILIDAD_DEFAULT;
+
+  if (/Firefox\//.test(userAgent)) {
+    perfil = 'firefox';
+    sensibilidad = MOUSE_SENSIBILIDAD_FIREFOX;
+  }
+
+  try {
+    const esBrave = await navigator.brave?.isBrave?.();
+    if (esBrave) {
+      perfil = 'brave';
+      sensibilidad = MOUSE_SENSIBILIDAD_BRAVE;
+    }
+  } catch {
+    // Mantiene el perfil ya detectado si Brave no expone su API.
+  }
+
+  perfilSensibilidadBase = perfil;
+  sensibilidadMouseBase = sensibilidad;
+
+  const sensibilidadGuardada = leerSensibilidadGuardada();
+  if (sensibilidadGuardada !== null) {
+    aplicarSensibilidadMouse('personalizada', sensibilidadGuardada);
+    return;
+  }
+
+  aplicarSensibilidadMouse(perfil, sensibilidad);
+}
+
+configurarSensibilidadMouse();
 window.__debugJump = {
   get saltosRestantes() {
     return personaje._saltosRestantes;
@@ -277,6 +364,21 @@ window.__debugJump = {
   },
   get enPared() {
     return personaje._enPared;
+  },
+  get mouseBloqueado() {
+    return personaje.estaMouseBloqueado();
+  },
+  get sensibilidadMouse() {
+    return personaje.sensibilidadMouse;
+  },
+  get perfilSensibilidadMouse() {
+    return perfilSensibilidadMouse;
+  },
+  get pausado() {
+    return juegoPausado;
+  },
+  setSensibilidadMouse(value) {
+    aplicarSensibilidadMouse('personalizada', limitarSensibilidadMouse(value), { guardar: true });
   },
   setSaltosRestantes(value) {
     personaje._saltosRestantes = value;
@@ -344,6 +446,18 @@ function detenerCronometro() {
   return tiempoActual;
 }
 
+function pausarCronometro() {
+  tiempoActual = tiempoPartidaActual();
+  cronometroActivo = false;
+  actualizarHud();
+}
+
+function reanudarCronometro() {
+  tiempoInicio = performance.now() / 1000 - tiempoActual;
+  cronometroActivo = true;
+  actualizarHud();
+}
+
 function registrarMeta() {
   const tiempoFinal = detenerCronometro();
   const nuevoRecord = mejorTiempo === null || tiempoFinal < mejorTiempo;
@@ -388,6 +502,49 @@ hud.innerHTML = `
 </div>`;
 document.body.appendChild(hud);
 
+const lockNotice = document.createElement('div');
+lockNotice.id = 'mouse-lock-notice';
+lockNotice.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:18;display:none;pointer-events:none;font-family:monospace;color:#fff;background:rgba(5,9,16,0.76);border:1px solid rgba(255,255,255,0.18);border-radius:6px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.28);';
+lockNotice.textContent = 'Click en la pantalla para capturar el mouse';
+document.body.appendChild(lockNotice);
+
+const pauseOverlay = document.createElement('div');
+pauseOverlay.id = 'pause-overlay';
+pauseOverlay.style.cssText = 'position:fixed;inset:0;z-index:35;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,0.62);font-family:monospace;color:#fff;';
+pauseOverlay.innerHTML = `
+<section aria-labelledby="pause-title" style="width:min(360px,calc(100vw - 32px));background:rgba(12,18,30,0.9);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,0.45);text-align:center;">
+  <h2 id="pause-title" style="font-size:30px;line-height:1;margin:0 0 18px;color:#fff;letter-spacing:0;">Pausa</h2>
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+    <button id="pause-resume" type="button" style="min-width:140px;border:0;border-radius:6px;background:#4FC3F7;color:#07101a;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Continuar</button>
+    <button id="pause-config" type="button" style="min-width:140px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Configuracion</button>
+  </div>
+</section>`;
+document.body.appendChild(pauseOverlay);
+
+const configOverlay = document.createElement('div');
+configOverlay.id = 'config-overlay';
+configOverlay.style.cssText = 'position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,0.7);font-family:monospace;color:#fff;';
+configOverlay.innerHTML = `
+<section aria-labelledby="config-title" style="width:min(460px,calc(100vw - 32px));background:rgba(12,18,30,0.94);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,0.45);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;">
+    <h2 id="config-title" style="font-size:28px;line-height:1;margin:0;color:#fff;letter-spacing:0;">Configuracion</h2>
+    <button id="config-close" type="button" aria-label="Cerrar configuracion" style="width:38px;height:38px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-size:20px;line-height:1;cursor:pointer;">x</button>
+  </div>
+  <div style="display:grid;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <label for="config-sensibilidad" style="font-size:13px;color:#c8d3e3;">Sensibilidad del mouse</label>
+      <div id="config-sensibilidad-value" style="min-width:42px;text-align:right;font-size:18px;font-weight:bold;color:#4FC3F7;">2.2</div>
+    </div>
+    <input id="config-sensibilidad" type="range" min="${MOUSE_SENSIBILIDAD_MIN * 1000}" max="${MOUSE_SENSIBILIDAD_MAX * 1000}" step="${MOUSE_SENSIBILIDAD_UI_STEP}" value="${MOUSE_SENSIBILIDAD_DEFAULT * 1000}" style="width:100%;accent-color:#4FC3F7;">
+    <div id="config-sensibilidad-profile" style="font-size:12px;color:#93a6bd;">Auto: default</div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:22px;">
+    <button id="config-reset" type="button" style="min-width:130px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-weight:bold;font-size:15px;padding:10px 14px;cursor:pointer;">Restablecer</button>
+    <button id="config-done" type="button" style="min-width:130px;border:0;border-radius:6px;background:#4FC3F7;color:#07101a;font-weight:bold;font-size:15px;padding:10px 14px;cursor:pointer;">Listo</button>
+  </div>
+</section>`;
+document.body.appendChild(configOverlay);
+
 const hudTiempo = document.getElementById('hud-tiempo');
 const hudMejor = document.getElementById('hud-mejor');
 const hudSaltos = document.getElementById('hud-saltos');
@@ -395,6 +552,12 @@ const hudDash = document.getElementById('hud-dash');
 const hudDashBar = document.getElementById('hud-dash-bar');
 const hudEstadoDot = document.getElementById('hud-estado-dot');
 const hudEstadoTexto = document.getElementById('hud-estado-texto');
+const pauseResumeBtn = document.getElementById('pause-resume');
+const pauseConfigBtn = document.getElementById('pause-config');
+const configCloseBtn = document.getElementById('config-close');
+const configDoneBtn = document.getElementById('config-done');
+const configResetBtn = document.getElementById('config-reset');
+const configSensibilidad = document.getElementById('config-sensibilidad');
 
 function actualizarHud() {
   hudTiempo.textContent = formatearTiempo(tiempoPartidaActual());
@@ -420,9 +583,45 @@ function actualizarHud() {
   hudEstadoTexto.textContent = estadoTexto;
   hudEstadoDot.style.background = estadoColor;
   hudEstadoDot.style.boxShadow = `0 0 10px ${estadoColor}`;
+
+  const necesitaMouse = juegoIniciado && !juegoPausado && personaje.modo && !personaje.estaMouseBloqueado();
+  lockNotice.style.display = necesitaMouse ? 'block' : 'none';
 }
 
 let juegoIniciado = false;
+let juegoPausado = false;
+let configuracionAbierta = false;
+let mouseBloqueadoDuranteJuego = false;
+
+function abrirConfiguracion() {
+  configuracionAbierta = true;
+  actualizarControlSensibilidad();
+  configOverlay.style.display = 'flex';
+}
+
+function cerrarConfiguracion() {
+  configuracionAbierta = false;
+  configOverlay.style.display = 'none';
+}
+
+function pausarJuego() {
+  if (!juegoIniciado || juegoPausado || finished) return;
+  juegoPausado = true;
+  pausarCronometro();
+  personaje.bloquearEntrada({ detenerMovimiento: true });
+  personaje.desactivar();
+  pauseOverlay.style.display = 'flex';
+  lockNotice.style.display = 'none';
+}
+
+function reanudarJuego() {
+  if (!juegoPausado) return;
+  juegoPausado = false;
+  personaje.desbloquearEntrada();
+  pauseOverlay.style.display = 'none';
+  reanudarCronometro();
+  personaje.activar();
+}
 
 const menuPrincipal = document.createElement('div');
 menuPrincipal.id = 'menu-principal';
@@ -434,6 +633,7 @@ menuPrincipal.innerHTML = `
   <p style="margin:0 0 22px;color:#c8d3e3;font-size:15px;line-height:1.5;">Llega a la meta usando saltos, dash y plataformas.</p>
   <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
     <button id="menu-jugar" type="button" style="min-width:140px;border:0;border-radius:6px;background:#4FC3F7;color:#07101a;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Jugar</button>
+    <button id="menu-config" type="button" style="min-width:140px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Configuracion</button>
     <button id="menu-controles" type="button" aria-expanded="false" aria-controls="menu-controles-panel" style="min-width:140px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Controles</button>
   </div>
   <div id="menu-controles-panel" hidden style="border-top:1px solid rgba(255,255,255,0.14);padding-top:16px;color:#dce7f5;font-size:14px;line-height:1.7;">
@@ -447,6 +647,7 @@ menuPrincipal.innerHTML = `
 document.body.appendChild(menuPrincipal);
 
 const jugarBtn = document.getElementById('menu-jugar');
+const menuConfigBtn = document.getElementById('menu-config');
 const controlesBtn = document.getElementById('menu-controles');
 const controlesPanel = document.getElementById('menu-controles-panel');
 
@@ -457,11 +658,78 @@ controlesBtn.addEventListener('click', (e) => {
   controlesBtn.setAttribute('aria-expanded', String(!visible));
 });
 
+menuConfigBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  abrirConfiguracion();
+});
+
+pauseResumeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  reanudarJuego();
+});
+
+pauseConfigBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  abrirConfiguracion();
+});
+
+configSensibilidad.addEventListener('input', () => {
+  aplicarSensibilidadMouse('personalizada', sensibilidadDesdeControl(configSensibilidad.value), { guardar: true });
+});
+
+configResetBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  restablecerSensibilidadMouse();
+});
+
+configCloseBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  cerrarConfiguracion();
+});
+
+configDoneBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  cerrarConfiguracion();
+});
+
+configOverlay.addEventListener('pointerdown', (e) => {
+  if (e.target === configOverlay) cerrarConfiguracion();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Escape') return;
+  if (configuracionAbierta) {
+    e.preventDefault();
+    e.stopPropagation();
+    cerrarConfiguracion();
+    return;
+  }
+  if (!juegoIniciado) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (juegoPausado) reanudarJuego();
+  else pausarJuego();
+}, true);
+
+document.addEventListener('pointerlockchange', () => {
+  if (!juegoIniciado || juegoPausado || !personaje.modo) return;
+  if (personaje.estaMouseBloqueado()) {
+    mouseBloqueadoDuranteJuego = true;
+    return;
+  }
+  if (mouseBloqueadoDuranteJuego) {
+    pausarJuego();
+  }
+});
+
 jugarBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   if (juegoIniciado) return;
   juegoIniciado = true;
+  juegoPausado = false;
+  mouseBloqueadoDuranteJuego = false;
   personaje.entradaBloqueada = false;
+  pauseOverlay.style.display = 'none';
   hud.style.display = 'flex';
   respawn(false);
   iniciarCronometro();
@@ -508,29 +776,32 @@ let t = 0;
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
-  t += delta;
-  world.step(1 / 120, delta, 10);
 
-  if (!personaje.modo) controls.update();
-  personaje.actualizar(delta);
+  if (!juegoPausado) {
+    t += delta;
+    world.step(1 / 120, delta, 10);
 
-  const p = personaje.pos;
+    if (!personaje.modo) controls.update();
+    personaje.actualizar(delta);
 
-  if (p.y < -6) respawn();
+    const p = personaje.pos;
 
-  const d = Math.sqrt((p.x - END.x) ** 2 + (p.z - END.z) ** 2);
-  if (d < 1.8 && !finished) {
-    finished = true;
-    finTimer = 1;
-    const resultado = registrarMeta();
-    msg.innerHTML = `LLEGASTE A LA META!<br><span style="font-size:18px;color:#fff;">Tiempo ${formatearTiempo(resultado.tiempoFinal)}${resultado.nuevoRecord ? ' - NUEVO RECORD' : ''}</span>`;
-    msg.style.opacity = '1';
-    setTimeout(() => {
-      msg.style.opacity = '0';
-      finished = false;
-      respawn(false);
-      iniciarCronometro();
-    }, 3000);
+    if (p.y < -6) respawn();
+
+    const d = Math.sqrt((p.x - END.x) ** 2 + (p.z - END.z) ** 2);
+    if (d < 1.8 && !finished) {
+      finished = true;
+      finTimer = 1;
+      const resultado = registrarMeta();
+      msg.innerHTML = `LLEGASTE A LA META!<br><span style="font-size:18px;color:#fff;">Tiempo ${formatearTiempo(resultado.tiempoFinal)}${resultado.nuevoRecord ? ' - NUEVO RECORD' : ''}</span>`;
+      msg.style.opacity = '1';
+      setTimeout(() => {
+        msg.style.opacity = '0';
+        finished = false;
+        respawn(false);
+        iniciarCronometro();
+      }, 3000);
+    }
   }
 
   if (flash > 0) { flash -= delta * 2; flashDiv.style.opacity = Math.min(1, flash); }

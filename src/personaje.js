@@ -10,7 +10,9 @@ const TECLA_DIRECCION = {
 const EJE_Y = new THREE.Vector3(0, 1, 0);
 const VELOCIDAD_BASE = 10;
 const DASH_TIEMPO_RECARGA = 2.0;
-const DASH_VELOCIDAD = 28;
+const DASH_VELOCIDAD = 30;
+const DASH_DURACION = 0.22;
+const SENSIBILIDAD_MOUSE_BASE = 0.1;
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -25,7 +27,7 @@ export class Personaje {
       velocidad: VELOCIDAD_BASE,
       fuerzaSalto: 5,
       factorVelocidadAire: 0.85,
-      sensibilidadMouse: 0.002,
+      sensibilidadMouse: SENSIBILIDAD_MOUSE_BASE,
       radioCapsula: 0.15,
       cuerpoCapsula: 0.4,
       alturaPersonaje: 0.7,
@@ -75,6 +77,9 @@ export class Personaje {
       _dashCooldown: 0,
       _dashTiempoRecarga: DASH_TIEMPO_RECARGA,
       _dashVel: DASH_VELOCIDAD,
+      _dashDuracion: DASH_DURACION,
+      _dashActivo: 0,
+      _dashDir: new THREE.Vector3(),
       _fovBase: 70,
       _fovDash: 0,
       _velocidadCaidaPared: -2,
@@ -172,6 +177,10 @@ export class Personaje {
     return document.pointerLockElement === this.lockTarget;
   }
 
+  estaMouseBloqueado() {
+    return this._mouseEstaBloqueado();
+  }
+
   _actualizarCursorMouse() {
     const cursor = this.modo && this._mouseEstaBloqueado() ? "none" : "";
     document.body.style.cursor = cursor;
@@ -192,6 +201,25 @@ export class Personaje {
       this.mouseActivo = false;
       this._actualizarCursorMouse();
     }
+  }
+
+  solicitarBloqueoMouse() {
+    this._solicitarBloqueoMouse();
+  }
+
+  bloquearEntrada({ detenerMovimiento = false } = {}) {
+    this.entradaBloqueada = true;
+    this.mouseActivo = false;
+    this._resetDirecciones();
+    this._dashActivo = 0;
+    if (detenerMovimiento && this.cuerpoFisico) {
+      this.cuerpoFisico.velocity.set(0, 0, 0);
+      this.cuerpoFisico.angularVelocity.set(0, 0, 0);
+    }
+  }
+
+  desbloquearEntrada() {
+    this.entradaBloqueada = false;
   }
 
   activar({ skipPointerLock = false } = {}) {
@@ -264,6 +292,8 @@ export class Personaje {
         if (this.direccion.derecha) d.x += 1;
         if (d.lengthSq() === 0) d.set(0, 0, -1);
         d.normalize().applyAxisAngle(EJE_Y, this.anguloY);
+        this._dashDir.copy(d);
+        this._dashActivo = this._dashDuracion;
         this.cuerpoFisico.velocity.x = d.x * this._dashVel;
         this.cuerpoFisico.velocity.z = d.z * this._dashVel;
         this.cuerpoFisico.velocity.y = Math.max(this.cuerpoFisico.velocity.y, 1);
@@ -296,6 +326,11 @@ export class Personaje {
     });
     window.addEventListener("click", () => {
       if (this.entradaBloqueada) return;
+      if (this.modo) this._solicitarBloqueoMouse();
+    });
+    this.lockTarget?.addEventListener?.("pointerdown", (e) => {
+      if (this.entradaBloqueada) return;
+      e.preventDefault();
       if (this.modo) this._solicitarBloqueoMouse();
     });
     window.addEventListener("blur", () => {
@@ -484,6 +519,7 @@ export class Personaje {
     this._actualizarEstadoSuelo();
     this._actualizarEstadoPared();
     if (this._dashCooldown > 0) this._dashCooldown -= delta;
+    if (this._dashActivo > 0) this._dashActivo = Math.max(0, this._dashActivo - delta);
     if (this._recargaTimmer > 0) this._recargaTimmer -= delta;
 
     const mov = this._mov.set(0, 0, 0);
@@ -520,7 +556,11 @@ export class Personaje {
       const velObj = this.enSuelo ? this.velocidad : this.velocidad * this.factorVelocidadAire;
       const acel = this.enSuelo ? this._aceleracion : this._aceleracionAire;
       const factor = 1 - Math.exp(-acel * delta);
-      if (tieneInput) {
+      const dashEnCurso = this._dashActivo > 0 && this._dashDir.lengthSq() > 0;
+      if (dashEnCurso) {
+        this.cuerpoFisico.velocity.x = this._dashDir.x * this._dashVel;
+        this.cuerpoFisico.velocity.z = this._dashDir.z * this._dashVel;
+      } else if (tieneInput) {
         const targetX = dirInput.x * velObj;
         const targetZ = dirInput.z * velObj;
         this.cuerpoFisico.velocity.x += (targetX - this.cuerpoFisico.velocity.x) * factor;
