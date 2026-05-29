@@ -20,7 +20,9 @@ test.describe('recarga doble salto', () => {
   });
 
   test('recarga en tile central', async ({ page }) => {
-    await expect.poll(async () => page.evaluate(() => window.__debugJump?.enSuelo ?? false)).toBe(true);
+    await expect
+      .poll(async () => page.evaluate(() => window.__debugJump?.enSuelo ?? false), { timeout: 12000 })
+      .toBe(true);
 
     await page.evaluate(() => window.__debugJump?.setSaltosRestantes(0));
 

@@ -18,21 +18,27 @@ const MOUSE_SENSIBILIDAD_MAX = 0.0200;
 const MOUSE_SENSIBILIDAD_UI_STEP = 0.1;
 
 const MAZE = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,1,1,1,1,1,1,1,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1],
+  [1,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,1],
+  [1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1],
+  [1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,1],
+  [1,0,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1],
+  [1,1,1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+  [1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1],
+  [1,0,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1],
+  [1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+  [1,0,1,1,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1],
+  [1,0,1,0,0,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,1],
+  [1,0,0,0,1,0,1,0,0,0,1,0,1,0,1,0,1,1,1,1,1],
+  [1,0,1,0,1,0,1,0,1,0,1,0,0,0,1,0,0,0,0,0,1],
+  [1,0,1,0,1,0,1,0,1,0,0,0,1,1,1,1,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,0,1,0,0,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
 
 const N = MAZE.length;
@@ -43,7 +49,7 @@ function celdaCentro(gx, gz) {
 }
 
 const START = celdaCentro(1, 1);
-const END = celdaCentro(13, 13);
+const END = celdaCentro(19, 19);
 
 document.querySelector('#app').innerHTML = `<div id="three-canvas-container" style="width:100vw;height:100vh;"></div>`;
 const container = document.getElementById('three-canvas-container');
@@ -106,13 +112,15 @@ const amb = new THREE.AmbientLight(0xccccff, 0.6);
 scene.add(amb);
 
 const PITS = new Set([
-  '4,1', '9,1',
-  '6,3', '11,3',
-  '3,5', '8,5',
-  '5,7', '11,7',
-  '4,9', '9,9',
-  '6,11', '12,11',
-  '3,13', '10,13',
+  '5,1', '12,1', '17,1',
+  '6,3', '13,3', '17,3',
+  '5,5', '8,5', '15,5',
+  '6,7', '10,7', '16,7',
+  '5,9', '8,9', '14,9',
+  '4,11', '8,11', '16,11',
+  '13,13', '18,13',
+  '5,15', '12,15', '17,15',
+  '6,18', '15,18',
 ]);
 const cellMat = new THREE.MeshStandardMaterial({ color: 0x4a5a4a, roughness: 0.9 });
 for (let gz = 0; gz < N; gz++) {
@@ -195,30 +203,76 @@ function crearSuelo(cx, cy, cz, ancho, prof, color) {
   world.addBody(b);
 }
 
-function p(gx, gz, h, w, d, col) {
-  if (PITS.has(`${gx},${gz}`)) return;
+function p(gx, gz, h, w, d, col, sobreHueco = false) {
+  if (PITS.has(`${gx},${gz}`) && !sobreHueco) return;
   const c = celdaCentro(gx, gz);
   if (MAZE[gz] && MAZE[gz][gx] === 0) crearSuelo(c.x, h, c.z, w, d, col);
 }
 
+function crearObstaculo(cx, cz, ancho, alto, prof, color) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(ancho, alto, prof),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.72 })
+  );
+  m.position.set(cx, alto / 2, cz);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  scene.add(m);
+  const b = new CANNON.Body({ mass: 0, material: wallMaterial });
+  b.userData = { tipo: "obstaculo" };
+  b.collisionFilterGroup = GROUP_WALL;
+  b.collisionFilterMask = GROUP_PLAYER;
+  b.addShape(new CANNON.Box(new CANNON.Vec3(ancho / 2, alto / 2, prof / 2)));
+  b.position.set(cx, alto / 2, cz);
+  world.addBody(b);
+}
+
+function o(gx, gz, w, h, d, col, ox = 0, oz = 0) {
+  if (PITS.has(`${gx},${gz}`)) return;
+  const c = celdaCentro(gx, gz);
+  if (MAZE[gz] && MAZE[gz][gx] === 0) {
+    crearObstaculo(c.x + ox * CELL, c.z + oz * CELL, w, h, d, col);
+  }
+}
+
 const C = CELL;
 
-p(3,1, 0.4, C*0.25, C*0.25, 0x66BB6A);
-p(8,1, 0.4, C*0.25, C*0.25, 0x81C784);
-p(5,5, 0.4, C*0.25, C*0.25, 0x4CAF50);
-p(9,9, 0.4, C*0.25, C*0.25, 0x66BB6A);
+p(2,1, 0.35, C*0.42, C*0.42, 0x66BB6A);
+p(7,1, 0.65, C*0.38, C*0.38, 0x8BC34A);
+p(12,1, 0.55, C*0.34, C*0.34, 0x4FC3F7, true);
+p(17,1, 0.85, C*0.35, C*0.35, 0x4FC3F7, true);
+p(6,3, 1.05, C*0.34, C*0.34, 0x4FC3F7, true);
+p(13,3, 0.7, C*0.35, C*0.35, 0x4FC3F7, true);
+p(9,5, 0.85, C*0.5, C*0.5, 0x66BB6A);
+p(15,5, 1.05, C*0.34, C*0.34, 0xFFB74D, true);
+p(6,7, 0.7, C*0.32, C*0.32, 0x4FC3F7, true);
+p(10,7, 0.95, C*0.36, C*0.36, 0x4FC3F7, true);
+p(13,7, 0.9, C*0.55, C*0.55, 0x8BC34A);
+p(8,9, 1.05, C*0.32, C*0.32, 0x4FC3F7, true);
+p(14,9, 0.7, C*0.36, C*0.36, 0x4FC3F7, true);
+p(4,11, 0.75, C*0.34, C*0.34, 0x4FC3F7, true);
+p(8,11, 1.35, C*0.34, C*0.34, 0xFF9800, true);
+p(12,11, 0.75, C*0.48, C*0.48, 0x66BB6A);
+p(5,13, 0.7, C*0.34, C*0.34, 0x4FC3F7, true);
+p(13,13, 1.1, C*0.34, C*0.34, 0x4FC3F7, true);
+p(18,13, 0.75, C*0.34, C*0.34, 0x4FC3F7, true);
+p(12,15, 1.55, C*0.38, C*0.38, 0xFF5722, true);
+p(17,15, 0.65, C*0.34, C*0.34, 0x4FC3F7, true);
+p(6,18, 0.85, C*0.35, C*0.35, 0x4FC3F7, true);
+p(15,18, 0.8, C*0.36, C*0.36, 0x4FC3F7, true);
+p(12,19, 0.55, C*0.6, C*0.6, 0x4CAF50);
+p(16,19, 0.95, C*0.45, C*0.45, 0x8BC34A);
 
-p(7,1, 0.6, C*0.5, C*0.5, 0x8BC34A);
-p(2,5, 0.6, C*0.5, C*0.5, 0xFF9800);
-p(13,7, 0.6, C*0.5, C*0.5, 0x8BC34A);
-
-p(5,9, 0.8, C*0.9, C*0.9, 0x4CAF50);
-p(3,11, 0.8, C*0.9, C*0.9, 0x4CAF50);
-p(9,13, 0.8, C*0.9, C*0.9, 0x4CAF50);
-
-p(12,3, 2.2, C*0.4, C*0.4, 0xFF5722);
-p(7,7, 2.5, C*0.4, C*0.4, 0xFF5722);
-p(2,11, 2.0, C*0.4, C*0.4, 0xFF5722);
+o(7,1, C*0.28, 0.8, C*0.78, 0x9E9E9E);
+o(10,3, C*0.22, 1.35, C*0.22, 0x78909C, 0.18, 0.18);
+o(11,5, C*0.72, 0.75, C*0.24, 0x9E9E9E);
+o(15,7, C*0.22, 1.45, C*0.22, 0x78909C, -0.22, 0);
+o(11,9, C*0.24, 0.85, C*0.78, 0x9E9E9E);
+o(6,11, C*0.7, 0.65, C*0.22, 0x9E9E9E);
+o(11,12, C*0.22, 1.4, C*0.22, 0x78909C, 0.2, -0.18);
+o(8,14, C*0.78, 0.7, C*0.24, 0x9E9E9E);
+o(15,15, C*0.24, 0.9, C*0.72, 0x9E9E9E);
+o(17,17, C*0.22, 1.35, C*0.22, 0x78909C, -0.2, 0.18);
 
 // ---- Torches ----
 // (none)
@@ -469,36 +523,36 @@ function registrarMeta() {
 }
 
 const hud = document.createElement('div');
-hud.style.cssText = 'position:fixed;top:14px;left:0;width:100%;display:flex;justify-content:center;pointer-events:none;z-index:10;font-family:monospace;color:#fff;';
+hud.style.cssText = 'position:fixed;top:10px;left:0;width:100%;display:flex;justify-content:center;pointer-events:none;z-index:10;font-family:monospace;color:#fff;';
 hud.style.display = 'none';
 hud.innerHTML = `
-<div style="width:min(760px,calc(100vw - 24px));background:rgba(5,9,16,0.72);border:1px solid rgba(255,255,255,0.16);border-radius:8px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.28);backdrop-filter:blur(8px);">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-    <div style="font-weight:bold;font-size:15px;letter-spacing:0;color:#fff;"><span style="color:#4FC3F7;">S</span> RE-MAZE <span style="color:#FFD700;">META</span></div>
-    <div id="hud-estado" style="display:flex;align-items:center;gap:6px;color:#c8d3e3;font-size:12px;"><span id="hud-estado-dot" style="width:8px;height:8px;border-radius:50%;background:#8BC34A;box-shadow:0 0 10px rgba(139,195,74,0.8);"></span><span id="hud-estado-texto">SUELO</span></div>
+<div style="width:min(646px,calc(100vw - 20px));background:rgba(5,9,16,0.68);border:1px solid rgba(255,255,255,0.14);border-radius:7px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,0.24);backdrop-filter:blur(7px);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+    <div style="font-weight:bold;font-size:13px;letter-spacing:0;color:#fff;"><span style="color:#4FC3F7;">S</span> RE-MAZE <span style="color:#FFD700;">META</span></div>
+    <div id="hud-estado" style="display:flex;align-items:center;gap:5px;color:#c8d3e3;font-size:10px;"><span id="hud-estado-dot" style="width:7px;height:7px;border-radius:50%;background:#8BC34A;box-shadow:0 0 8px rgba(139,195,74,0.8);"></span><span id="hud-estado-texto">SUELO</span></div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:8px;">
-    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
-      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">TIEMPO</div>
-      <div id="hud-tiempo" style="font-size:21px;font-weight:bold;color:#fff;line-height:1;">00:00.00</div>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(76px,1fr));gap:7px;">
+    <div style="background:rgba(255,255,255,0.065);border-radius:5px;padding:7px 8px;min-height:44px;">
+      <div style="font-size:9px;color:#93a6bd;margin-bottom:3px;">TIEMPO</div>
+      <div id="hud-tiempo" style="font-size:18px;font-weight:bold;color:#fff;line-height:1;">00:00.00</div>
     </div>
-    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
-      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">MEJOR</div>
-      <div id="hud-mejor" style="font-size:18px;font-weight:bold;color:#FFD700;line-height:1.1;">--:--.--</div>
+    <div style="background:rgba(255,255,255,0.065);border-radius:5px;padding:7px 8px;min-height:44px;">
+      <div style="font-size:9px;color:#93a6bd;margin-bottom:3px;">MEJOR</div>
+      <div id="hud-mejor" style="font-size:15px;font-weight:bold;color:#FFD700;line-height:1.1;">--:--.--</div>
     </div>
-    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
-      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">SALTOS</div>
-      <div id="hud-saltos" style="font-size:18px;font-weight:bold;color:#8BC34A;line-height:1.1;">1/1</div>
+    <div style="background:rgba(255,255,255,0.065);border-radius:5px;padding:7px 8px;min-height:44px;">
+      <div style="font-size:9px;color:#93a6bd;margin-bottom:3px;">SALTOS</div>
+      <div id="hud-saltos" style="font-size:15px;font-weight:bold;color:#8BC34A;line-height:1.1;">1/1</div>
     </div>
-    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
-      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">DASH</div>
-      <div id="hud-dash" style="font-size:18px;font-weight:bold;color:#8BC34A;line-height:1.1;">LISTO</div>
-      <div style="height:3px;background:rgba(255,255,255,0.12);border-radius:999px;margin-top:7px;overflow:hidden;">
+    <div style="background:rgba(255,255,255,0.065);border-radius:5px;padding:7px 8px;min-height:44px;">
+      <div style="font-size:9px;color:#93a6bd;margin-bottom:3px;">DASH</div>
+      <div id="hud-dash" style="font-size:15px;font-weight:bold;color:#8BC34A;line-height:1.1;">LISTO</div>
+      <div style="height:3px;background:rgba(255,255,255,0.12);border-radius:999px;margin-top:6px;overflow:hidden;">
         <div id="hud-dash-bar" style="height:100%;width:100%;background:#4FC3F7;transform-origin:left center;transform:scaleX(1);"></div>
       </div>
     </div>
   </div>
-  <div style="margin-top:8px;font-size:11px;color:#9fb0c4;text-align:center;">WASD mover &nbsp; SPACE saltar &nbsp; SHIFT dash &nbsp; V camara</div>
+  <div style="margin-top:6px;font-size:9px;color:#9fb0c4;text-align:center;">WASD mover &nbsp; SPACE saltar &nbsp; SHIFT dash &nbsp; V camara</div>
 </div>`;
 document.body.appendChild(hud);
 
