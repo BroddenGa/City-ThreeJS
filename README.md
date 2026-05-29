@@ -1,4 +1,4 @@
-# City ThreeJS – Laberinto Parkour
+# re-maze
 
 Juego de parkour en primera persona dentro de un laberinto 3D, construido con **Three.js** (renderizado) y **cannon-es** (física).
 
@@ -12,7 +12,7 @@ Juego de parkour en primera persona dentro de un laberinto 3D, construido con **
 | `W A S D` | Moverse (adelante, atrás, izquierda, derecha) |
 | `Espacio` | Saltar (doble salto disponible) |
 | `Espacio` (contra pared) | Wall jump |
-| `Shift` | Dash en dirección del movimiento (cooldown 0.25s) |
+| `Shift` | Dash en dirección del movimiento (cooldown 2s) |
 | Mouse | Mirar alrededor (primera persona) |
 | Clic | Activar pointer lock (primera persona) |
 
@@ -24,22 +24,31 @@ Juego de parkour en primera persona dentro de un laberinto 3D, construido con **
 Entry point. Carga `src/main.js` como módulo. Contiene un contenedor `#app` y estilos base.
 
 ### `src/main.js`
-Monta toda la escena: laberinto, físicas, iluminación, personaje, HUD y bucle de juego.
+Orquesta la escena: inicializa Three.js, físicas, nivel, UI, personaje y el bucle de juego.
 
 | Sección | Descripción |
 |---|---|
-| **Laberinto (MAZE)** | Matriz 15×15 de 1's (pared) y 0's (pasillo). BFS garantizado desde (1,1) hasta (13,13). Cada celda mide `CELL = 3.5` unidades. |
+| **Laberinto procedural** | Se genera una matriz 29×29 por partida. La validación exige meta y mínimo 2 rutas distintas hacia ella. Cada celda mide `CELL = 3.5` unidades. |
 | **Paredes** | Altura `WALL_H = 4.5`. Se genera una caja física por cada frontera entre celda libre y pared. La caja física se extiende 3u más abajo para evitar escapes. |
 | **Suelo** | Plano en cada celda libre, con cuerpo físico estático de 0.5u de grosor centrado en y = -0.5. |
-| **Pozos (PITS)** | 14 celdas marcadas que no tienen suelo. El personaje cae por gravedad y respawnea al llegar a `y < -6`. |
-| **Plataformas parkour** | 13 plataformas de distintos tamaños y alturas (0.4, 0.6, 0.8, 2.0-2.5). Sirven como atajos entre secciones del laberinto. |
-| **Salida (META)** | Celda (13,13) con pilar, estrella flotante y luz dorada. Al alcanzarla aparece un mensaje y se respawnea tras 3s. |
+| **Pozos** | Se colocan proceduralmente en celdas que no rompen la validación del mapa. El personaje cae por gravedad y respawnea al llegar a `y < -6`. |
+| **Plataformas parkour** | Se generan como atajos y pasos sobre algunos pozos; pueden contar como rutas válidas hacia la meta. |
+| **Salida (META)** | Siempre existe, se coloca lejos del inicio y tiene pilar, estrella flotante y luz dorada. Al alcanzarla aparece un mensaje y se genera un nuevo maze tras 3s. |
 | **HUD** | Indicador superior con controles. |
-| **Iluminación** | Luz hemisferio + direccional con sombras + ambiental + 7 point lights en pasillos + luces en salida y inicio. |
+| **Iluminación** | Luz hemisferio + direccional con sombras + ambiental + point lights en pasillos + luces en salida y inicio. |
 | **Respawn** | Si el jugador cae por debajo de y = -6, vuelve al inicio con un flash rojo. |
 
-### `src/personaje.js`
+### `src/player/personaje.js`
 Clase `Personaje` que maneja el movimiento, físicas, cámara y habilidades.
+
+### `src/player/input.js`
+Enlaza teclado/mouse/pointer lock con el `Personaje`.
+
+### `src/world/`
+Constantes (`config.js`), generación procedural validada (`generator.js`), físicas (`physics.js`) y construcción visual/física del escenario (`level.js`).
+
+### `src/ui/ui.js`
+HUD, menú, pausa y configuración (sensibilidad + cronómetro).
 
 | Componente | Descripción |
 |---|---|
@@ -48,10 +57,10 @@ Clase `Personaje` que maneja el movimiento, físicas, cámara y habilidades.
 | **Movimiento suave** | Aceleración exponencial hacia la velocidad objetivo: `factor = 1 - e^(-acel * delta)`. En suelo: acel=60, en aire: acel=40. |
 | **Límite de velocidad** | `velMax = (radioCapsula * 2.6) / dtSeguro` para evitar tunnelling. |
 | **Salto** | `fuerzaSalto = 8.0`. Se reincia al tocar suelo. |
-| **Doble salto** | `_saltosMax = 2`. Se gasta un salto extra en el aire. Se reincia al pisar suelo. |
+| **Doble salto** | `_saltosMax = 1`. Se gasta un salto extra en el aire. Se reinicia al pisar suelo. |
 | **Wall jump** | Raycast en 4 direcciones. Si detecta pared vertical, salta con empuje perpendicular de 6 u. |
 | **Wall slide** | Si está contra una pared y cayendo, la velocidad vertical se limita a -2 m/s (caída lenta). |
-| **Dash** | Shift + dirección. Velocidad 35 en la dirección del movimiento (o hacia adelante si no hay input). Cooldown 0.25s. FOV burst a 85 durante 0.2s. |
+| **Dash** | Shift + dirección. Velocidad 30 en la dirección del movimiento (o hacia adelante si no hay input). Cooldown 2s. FOV burst a 85 durante 0.2s. |
 | **Detección de suelo** | Raycast hacia abajo desde el centro del cuerpo, con `distanciaDeteccionSuelo = 0.12` y `tiempoGraciaSalto = 0.12s`. |
 | **Cámara** | En primera persona (`distanciaCamara = 0`) sigue al personaje con altura 1.5. La rotación horizontal se controla con el mouse. |
 | **Modo orbital** | `V` desactiva la primera persona y activa OrbitControls para debug. |
@@ -96,6 +105,15 @@ City-ThreeJS/
 │   └── vite.svg
 ├── src/
 │   ├── main.js
-│   └── personaje.js
+│   ├── player/
+│   │   ├── input.js
+│   │   └── personaje.js
+│   ├── ui/
+│   │   └── ui.js
+│   └── world/
+│       ├── config.js
+│       ├── generator.js
+│       ├── level.js
+│       └── physics.js
 └── dist/
 ```
