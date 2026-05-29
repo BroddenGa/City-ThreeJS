@@ -8,6 +8,7 @@ const WALL_H = 4.5;
 const WALL_T = 0.25;
 const WALL_COLLISION_EXTRA = 12;
 const RECHARGE_MARGIN = CELL * 0.3;
+const PLAYER_SPEED = 12;
 
 const MAZE = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -260,6 +261,7 @@ personaje.reglasRecargaSuelo = {
   pits: PITS,
   margin: RECHARGE_MARGIN,
 };
+personaje.entradaBloqueada = true;
 window.__debugJump = {
   get saltosRestantes() {
     return personaje._saltosRestantes;
@@ -290,7 +292,7 @@ if (personaje.cuerpoFisico) {
 }
 personaje.distanciaCamara = 0;
 personaje.alturaCamara = 1.5;
-personaje.velocidad = 22;
+personaje.velocidad = PLAYER_SPEED;
 personaje.fuerzaSalto = 8.0;
 const mazeHalf = (N * CELL) / 2;
 personaje.limitesPlano = {
@@ -300,14 +302,174 @@ personaje.limitesPlano = {
   maxZ: mazeHalf - personaje.radioCapsula,
 };
 
+const BEST_TIME_KEY = 're-maze-best-time';
+
+function leerMejorTiempo() {
+  const value = Number(localStorage.getItem(BEST_TIME_KEY));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function guardarMejorTiempo(value) {
+  localStorage.setItem(BEST_TIME_KEY, String(value));
+}
+
+function formatearTiempo(segundos) {
+  const totalCent = Math.max(0, Math.floor(segundos * 100));
+  const min = Math.floor(totalCent / 6000);
+  const sec = Math.floor((totalCent % 6000) / 100);
+  const cent = totalCent % 100;
+  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(cent).padStart(2, '0')}`;
+}
+
+let tiempoInicio = 0;
+let tiempoActual = 0;
+let cronometroActivo = false;
+let mejorTiempo = leerMejorTiempo();
+
+function tiempoPartidaActual() {
+  if (!cronometroActivo) return tiempoActual;
+  return performance.now() / 1000 - tiempoInicio;
+}
+
+function iniciarCronometro() {
+  tiempoInicio = performance.now() / 1000;
+  tiempoActual = 0;
+  cronometroActivo = true;
+  actualizarHud();
+}
+
+function detenerCronometro() {
+  tiempoActual = tiempoPartidaActual();
+  cronometroActivo = false;
+  return tiempoActual;
+}
+
+function registrarMeta() {
+  const tiempoFinal = detenerCronometro();
+  const nuevoRecord = mejorTiempo === null || tiempoFinal < mejorTiempo;
+  if (nuevoRecord) {
+    mejorTiempo = tiempoFinal;
+    guardarMejorTiempo(tiempoFinal);
+  }
+  return { tiempoFinal, nuevoRecord };
+}
+
 const hud = document.createElement('div');
-hud.style.cssText = 'position:fixed;top:16px;width:100%;text-align:center;pointer-events:none;z-index:10;font-family:monospace;';
+hud.style.cssText = 'position:fixed;top:14px;left:0;width:100%;display:flex;justify-content:center;pointer-events:none;z-index:10;font-family:monospace;color:#fff;';
+hud.style.display = 'none';
 hud.innerHTML = `
-<div style="display:inline-block;background:rgba(0,0,0,0.6);padding:6px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
-<span style="color:#4FC3F7;">S</span> <b style="color:#fff;">LABERINTO PARKOUR</b> <span style="color:#FFD700;">META</span><br>
-<span style="font-size:12px;color:#aaa;">[V] 1ra persona &nbsp;[WASD] mover &nbsp;[SPACE] saltar x2 &nbsp;[SHIFT] dash</span>
+<div style="width:min(760px,calc(100vw - 24px));background:rgba(5,9,16,0.72);border:1px solid rgba(255,255,255,0.16);border-radius:8px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.28);backdrop-filter:blur(8px);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+    <div style="font-weight:bold;font-size:15px;letter-spacing:0;color:#fff;"><span style="color:#4FC3F7;">S</span> RE-MAZE <span style="color:#FFD700;">META</span></div>
+    <div id="hud-estado" style="display:flex;align-items:center;gap:6px;color:#c8d3e3;font-size:12px;"><span id="hud-estado-dot" style="width:8px;height:8px;border-radius:50%;background:#8BC34A;box-shadow:0 0 10px rgba(139,195,74,0.8);"></span><span id="hud-estado-texto">SUELO</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:8px;">
+    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
+      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">TIEMPO</div>
+      <div id="hud-tiempo" style="font-size:21px;font-weight:bold;color:#fff;line-height:1;">00:00.00</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
+      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">MEJOR</div>
+      <div id="hud-mejor" style="font-size:18px;font-weight:bold;color:#FFD700;line-height:1.1;">--:--.--</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
+      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">SALTOS</div>
+      <div id="hud-saltos" style="font-size:18px;font-weight:bold;color:#8BC34A;line-height:1.1;">1/1</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:8px 10px;min-height:52px;">
+      <div style="font-size:10px;color:#93a6bd;margin-bottom:4px;">DASH</div>
+      <div id="hud-dash" style="font-size:18px;font-weight:bold;color:#8BC34A;line-height:1.1;">LISTO</div>
+      <div style="height:3px;background:rgba(255,255,255,0.12);border-radius:999px;margin-top:7px;overflow:hidden;">
+        <div id="hud-dash-bar" style="height:100%;width:100%;background:#4FC3F7;transform-origin:left center;transform:scaleX(1);"></div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#9fb0c4;text-align:center;">WASD mover &nbsp; SPACE saltar &nbsp; SHIFT dash &nbsp; V camara</div>
 </div>`;
 document.body.appendChild(hud);
+
+const hudTiempo = document.getElementById('hud-tiempo');
+const hudMejor = document.getElementById('hud-mejor');
+const hudSaltos = document.getElementById('hud-saltos');
+const hudDash = document.getElementById('hud-dash');
+const hudDashBar = document.getElementById('hud-dash-bar');
+const hudEstadoDot = document.getElementById('hud-estado-dot');
+const hudEstadoTexto = document.getElementById('hud-estado-texto');
+
+function actualizarHud() {
+  hudTiempo.textContent = formatearTiempo(tiempoPartidaActual());
+  hudMejor.textContent = mejorTiempo === null ? '--:--.--' : formatearTiempo(mejorTiempo);
+  hudSaltos.textContent = `${personaje._saltosRestantes}/${personaje._saltosMax}`;
+
+  const dashRestante = Math.max(0, personaje._dashCooldown);
+  const dashTotal = personaje._dashTiempoRecarga || 1;
+  const dashListo = dashRestante <= 0;
+  hudDash.textContent = dashListo ? 'LISTO' : `${dashRestante.toFixed(1)}s`;
+  hudDash.style.color = dashListo ? '#8BC34A' : '#FFD166';
+  hudDashBar.style.transform = `scaleX(${dashListo ? 1 : 1 - Math.min(1, dashRestante / dashTotal)})`;
+
+  let estadoTexto = 'AIRE';
+  let estadoColor = '#90CAF9';
+  if (personaje.enSuelo) {
+    estadoTexto = 'SUELO';
+    estadoColor = '#8BC34A';
+  } else if (personaje._enPared) {
+    estadoTexto = 'PARED';
+    estadoColor = '#FFB74D';
+  }
+  hudEstadoTexto.textContent = estadoTexto;
+  hudEstadoDot.style.background = estadoColor;
+  hudEstadoDot.style.boxShadow = `0 0 10px ${estadoColor}`;
+}
+
+let juegoIniciado = false;
+
+const menuPrincipal = document.createElement('div');
+menuPrincipal.id = 'menu-principal';
+menuPrincipal.style.cssText = 'position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,0.78);font-family:monospace;color:#fff;transition:opacity 0.28s ease;';
+menuPrincipal.innerHTML = `
+<section aria-labelledby="menu-title" style="width:min(520px,calc(100vw - 32px));background:rgba(12,18,30,0.88);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,0.45);">
+  <div style="font-size:13px;color:#4FC3F7;letter-spacing:0;text-transform:uppercase;margin-bottom:8px;">Parkour 3D</div>
+  <h1 id="menu-title" style="font-size:38px;line-height:1.05;margin:0 0 12px;color:#fff;letter-spacing:0;">re-maze</h1>
+  <p style="margin:0 0 22px;color:#c8d3e3;font-size:15px;line-height:1.5;">Llega a la meta usando saltos, dash y plataformas.</p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <button id="menu-jugar" type="button" style="min-width:140px;border:0;border-radius:6px;background:#4FC3F7;color:#07101a;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Jugar</button>
+    <button id="menu-controles" type="button" aria-expanded="false" aria-controls="menu-controles-panel" style="min-width:140px;border:1px solid rgba(255,255,255,0.28);border-radius:6px;background:rgba(255,255,255,0.08);color:#fff;font-weight:bold;font-size:16px;padding:12px 18px;cursor:pointer;">Controles</button>
+  </div>
+  <div id="menu-controles-panel" hidden style="border-top:1px solid rgba(255,255,255,0.14);padding-top:16px;color:#dce7f5;font-size:14px;line-height:1.7;">
+    <div><b>WASD</b> - Moverse</div>
+    <div><b>Mouse</b> - Mirar alrededor</div>
+    <div><b>Space</b> - Saltar y doble salto</div>
+    <div><b>Shift</b> - Dash</div>
+    <div><b>V</b> - Alternar camara</div>
+  </div>
+</section>`;
+document.body.appendChild(menuPrincipal);
+
+const jugarBtn = document.getElementById('menu-jugar');
+const controlesBtn = document.getElementById('menu-controles');
+const controlesPanel = document.getElementById('menu-controles-panel');
+
+controlesBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const visible = !controlesPanel.hidden;
+  controlesPanel.hidden = visible;
+  controlesBtn.setAttribute('aria-expanded', String(!visible));
+});
+
+jugarBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (juegoIniciado) return;
+  juegoIniciado = true;
+  personaje.entradaBloqueada = false;
+  hud.style.display = 'flex';
+  respawn(false);
+  iniciarCronometro();
+  personaje.activar();
+  menuPrincipal.style.opacity = '0';
+  menuPrincipal.style.pointerEvents = 'none';
+  setTimeout(() => menuPrincipal.remove(), 320);
+});
 
 [
   [3,1], [7,3], [11,5], [7,7], [3,9], [11,11], [7,13],
@@ -333,12 +495,13 @@ flashDiv.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.15);p
 document.body.appendChild(flashDiv);
 let flash = 0;
 
-function respawn() {
+function respawn(mostrarFlash = true) {
   if (!personaje.cuerpoFisico) return;
   personaje.cuerpoFisico.position.set(START.x, 1, START.z);
   personaje.cuerpoFisico.velocity.set(0, 0, 0);
   personaje.pos.set(START.x, 0.5, START.z);
-  flash = 1.0;
+  flash = mostrarFlash ? 1.0 : 0;
+  if (!mostrarFlash) flashDiv.style.opacity = '0';
 }
 
 let t = 0;
@@ -359,12 +522,21 @@ function animate() {
   if (d < 1.8 && !finished) {
     finished = true;
     finTimer = 1;
+    const resultado = registrarMeta();
+    msg.innerHTML = `LLEGASTE A LA META!<br><span style="font-size:18px;color:#fff;">Tiempo ${formatearTiempo(resultado.tiempoFinal)}${resultado.nuevoRecord ? ' - NUEVO RECORD' : ''}</span>`;
     msg.style.opacity = '1';
-    setTimeout(() => { msg.style.opacity = '0'; finished = false; respawn(); }, 3000);
+    setTimeout(() => {
+      msg.style.opacity = '0';
+      finished = false;
+      respawn(false);
+      iniciarCronometro();
+    }, 3000);
   }
 
   if (flash > 0) { flash -= delta * 2; flashDiv.style.opacity = Math.min(1, flash); }
   else flashDiv.style.opacity = '0';
+
+  actualizarHud();
 
   fStar.position.y = 4.0 + Math.sin(t * 2) * 0.3;
   fStar.rotation.y = t;

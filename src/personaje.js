@@ -8,6 +8,9 @@ const TECLA_DIRECCION = {
   d: "derecha",
 };
 const EJE_Y = new THREE.Vector3(0, 1, 0);
+const VELOCIDAD_BASE = 10;
+const DASH_TIEMPO_RECARGA = 2.0;
+const DASH_VELOCIDAD = 28;
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -19,7 +22,7 @@ export class Personaje {
       scene,
       world,
       lockTarget: controls?.domElement ?? document.body,
-      velocidad: 11,
+      velocidad: VELOCIDAD_BASE,
       fuerzaSalto: 5,
       factorVelocidadAire: 0.85,
       sensibilidadMouse: 0.002,
@@ -42,6 +45,7 @@ export class Personaje {
       anguloX: 0,
       pos: new THREE.Vector3(8, 2, 0),
       modo: false,
+      entradaBloqueada: false,
       mouseActivo: false,
       mouseUltimoX: 0,
       mouseUltimoY: 0,
@@ -69,8 +73,8 @@ export class Personaje {
       _saltosMax: 1,
       _saltosRestantes: 1,
       _dashCooldown: 0,
-      _dashTiempoRecarga: 0.25,
-      _dashVel: 35,
+      _dashTiempoRecarga: DASH_TIEMPO_RECARGA,
+      _dashVel: DASH_VELOCIDAD,
       _fovBase: 70,
       _fovDash: 0,
       _velocidadCaidaPared: -2,
@@ -89,6 +93,7 @@ export class Personaje {
       maxZ: 60 / 2 - this.radioCapsula,
     };
 
+    if (this.lockTarget?.tabIndex < 0) this.lockTarget.tabIndex = 0;
     this._crearCuerpoFisico();
     this._cargarModeloVisual();
     this._initEventos();
@@ -163,15 +168,40 @@ export class Personaje {
     }
   }
 
+  _mouseEstaBloqueado() {
+    return document.pointerLockElement === this.lockTarget;
+  }
+
+  _actualizarCursorMouse() {
+    const cursor = this.modo && this._mouseEstaBloqueado() ? "none" : "";
+    document.body.style.cursor = cursor;
+    if (this.lockTarget?.style) this.lockTarget.style.cursor = cursor;
+  }
+
+  _solicitarBloqueoMouse() {
+    if (this.entradaBloqueada || !this.modo || this._mouseEstaBloqueado()) return;
+    if (!this.lockTarget?.requestPointerLock) return;
+    this.lockTarget.focus?.({ preventScroll: true });
+    try {
+      const bloqueo = this.lockTarget.requestPointerLock();
+      bloqueo?.catch?.(() => {
+        this.mouseActivo = false;
+        this._actualizarCursorMouse();
+      });
+    } catch {
+      this.mouseActivo = false;
+      this._actualizarCursorMouse();
+    }
+  }
+
   activar({ skipPointerLock = false } = {}) {
+    if (this.entradaBloqueada) return;
     this.modo = true;
     this.controls.enabled = false;
     this.mouseActivo = false;
     this._resetDirecciones();
-    document.body.style.cursor = "none";
-    if (!skipPointerLock && document.pointerLockElement !== this.lockTarget) {
-      this.lockTarget.requestPointerLock?.();
-    }
+    this._actualizarCursorMouse();
+    if (!skipPointerLock) this._solicitarBloqueoMouse();
     if (this.visual) this.visual.visible = this.distanciaCamara > 0.01;
     if (this.cuerpoFisico) {
       this.cuerpoFisico.velocity.set(0, 0, 0);
@@ -188,10 +218,10 @@ export class Personaje {
     this.controls.enabled = true;
     this.mouseActivo = false;
     this._resetDirecciones();
-    document.body.style.cursor = "";
     if (document.pointerLockElement === this.lockTarget) {
       document.exitPointerLock?.();
     }
+    this._actualizarCursorMouse();
     if (this.visual) this.visual.visible = false;
     if (this.cuerpoFisico) {
       this.cuerpoFisico.velocity.set(0, 0, 0);
@@ -201,10 +231,15 @@ export class Personaje {
 
   _initEventos() {
     window.addEventListener("keydown", (e) => {
+      if (this.entradaBloqueada) {
+        this._resetDirecciones();
+        return;
+      }
       const key = e.key.toLowerCase();
       if (key === "v")
         return this.modo ? this.desactivar() : this.activar();
       if (!this.modo) return;
+      this._solicitarBloqueoMouse();
       const dir = TECLA_DIRECCION[key];
       if (dir) this.direccion[dir] = true;
       if (e.code === "Space" && !e.repeat && this.cuerpoFisico) {
@@ -237,52 +272,56 @@ export class Personaje {
       }
     });
     window.addEventListener("keyup", (e) => {
+      if (this.entradaBloqueada) {
+        this._resetDirecciones();
+        return;
+      }
       const dir = TECLA_DIRECCION[e.key.toLowerCase()];
       if (dir) this.direccion[dir] = false;
     });
     window.addEventListener("mousemove", (e) => {
+      if (this.entradaBloqueada) return;
       if (!this.modo) return;
-      if (document.pointerLockElement === this.lockTarget) {
-        this.anguloY -= e.movementX * this.sensibilidadMouse;
-        this.anguloX -= e.movementY * this.sensibilidadMouse;
-        this._limitarPitch();
+      if (!this._mouseEstaBloqueado()) {
+        this.mouseActivo = false;
         return;
       }
-      if (!this.mouseActivo) {
-        this.mouseActivo = true;
-        this.mouseUltimoX = e.clientX;
-        this.mouseUltimoY = e.clientY;
-        return;
-      }
-      this.anguloY -= (e.clientX - this.mouseUltimoX) * this.sensibilidadMouse;
-      this.anguloX -= (e.clientY - this.mouseUltimoY) * this.sensibilidadMouse;
+      this.mouseActivo = true;
+      this.anguloY -= e.movementX * this.sensibilidadMouse;
+      this.anguloX -= e.movementY * this.sensibilidadMouse;
       this._limitarPitch();
-      this.mouseUltimoX = e.clientX;
-      this.mouseUltimoY = e.clientY;
     });
     window.addEventListener("mouseleave", () => {
       this.mouseActivo = false;
     });
     window.addEventListener("click", () => {
-      if (this.modo && document.pointerLockElement !== this.lockTarget) {
-        this.lockTarget.requestPointerLock?.();
-      }
+      if (this.entradaBloqueada) return;
+      if (this.modo) this._solicitarBloqueoMouse();
     });
     window.addEventListener("blur", () => {
       this.mouseActivo = false;
       this._resetDirecciones();
+      this._actualizarCursorMouse();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         this.mouseActivo = false;
         this._resetDirecciones();
+        this._actualizarCursorMouse();
       }
     });
     document.addEventListener("pointerlockchange", () => {
-      if (document.pointerLockElement !== this.lockTarget) {
+      const bloqueado = this._mouseEstaBloqueado();
+      this.mouseActivo = bloqueado;
+      this._actualizarCursorMouse();
+      if (!bloqueado) {
         this.mouseActivo = false;
         this._resetDirecciones();
       }
+    });
+    document.addEventListener("pointerlockerror", () => {
+      this.mouseActivo = false;
+      this._actualizarCursorMouse();
     });
   }
 

@@ -1,4 +1,4 @@
-# City ThreeJS – Laberinto Parkour
+# re-maze
 
 Juego de parkour en primera persona dentro de un laberinto 3D, construido con **Three.js** (renderizado) y **cannon-es** (física).
 

@@ -3,6 +3,8 @@ import { test, expect } from 'playwright/test';
 test.describe('recarga doble salto', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:5173/');
+    await page.getByRole('button', { name: 'Jugar' }).click();
+    await expect(page.locator('#menu-principal')).toHaveCount(0);
   });
 
   test('no recarga al tocar muros', async ({ page }) => {
@@ -19,15 +21,12 @@ test.describe('recarga doble salto', () => {
   });
 
   test('recarga en tile central', async ({ page }) => {
-    await page.click('canvas');
-    await page.waitForTimeout(200);
+    await expect.poll(async () => page.evaluate(() => window.__debugJump?.enSuelo ?? false)).toBe(true);
 
     await page.keyboard.press('Space');
     await page.waitForTimeout(120);
     await page.keyboard.press('Space');
 
-    await page.waitForTimeout(400);
-    const saltos = await page.evaluate(() => window.__debugJump?.saltosRestantes ?? null);
-    expect(saltos).toBe(1);
+    await expect.poll(async () => page.evaluate(() => window.__debugJump?.saltosRestantes ?? null)).toBe(1);
   });
 });
