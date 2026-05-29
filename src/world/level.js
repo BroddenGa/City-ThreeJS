@@ -60,7 +60,7 @@ function makeMaterial(params) {
   }
 
   const floorGeometry = new THREE.PlaneGeometry(CELL, CELL);
-  const floorMat = makeMaterial({ color: 0x4a5a4a, roughness: 0.9 });
+  const floorMat = makeMaterial({ color: 0x8FAE8E, roughness: 0.82 });
   const floorMesh = new THREE.InstancedMesh(floorGeometry, floorMat, floorCells.length);
   floorMesh.receiveShadow = true;
   floorCells.forEach((cell, index) => {
