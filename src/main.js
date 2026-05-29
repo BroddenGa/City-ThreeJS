@@ -300,12 +300,20 @@ function animate() {
   ui.actualizarHud();
 
   if (levelRender) {
-    const starBaseY = Number.isFinite(levelRender.fStar?.userData?.baseY)
-      ? levelRender.fStar.userData.baseY
-      : 4.0;
-    levelRender.fStar.position.y = starBaseY + Math.sin(t * 2) * 0.3;
+    const starData = levelRender.fStar.userData ?? {};
+    const minY = Number.isFinite(starData.minY) ? starData.minY : 2.0;
+    const maxY = Number.isFinite(starData.maxY) ? starData.maxY : 22.0;
+    const duration = Number.isFinite(starData.travelDuration) ? starData.travelDuration : 4.5;
+    const progress = (t % duration) / duration;
+    const travel = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+    const pulseScale = Number.isFinite(starData.pulseScale) ? starData.pulseScale : 0.1;
+    const scale = 1 + Math.sin(t * 5) * pulseScale;
+    levelRender.fStar.position.y = minY + (maxY - minY) * travel;
     levelRender.fStar.rotation.y = t;
-    levelRender.fLight.intensity = 1.2 + Math.sin(t * 3) * 0.35;
+    levelRender.fStar.rotation.x = t * 0.35;
+    levelRender.fStar.scale.setScalar(scale);
+    levelRender.fLight.position.y = levelRender.fStar.position.y + 1.5;
+    levelRender.fLight.intensity = 1.25 + Math.sin(t * 3) * 0.35;
   }
 
   renderer.render(scene, camera);

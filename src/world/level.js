@@ -3,6 +3,10 @@ import * as CANNON from 'cannon-es';
 import { CELL, WALL_H, WALL_T, WALL_COLLISION_EXTRA } from './config.js';
 
 const WALL_COLORS = [0x2E86DE, 0x00B894, 0xE17055, 0xA29BFE, 0xFDCB6E, 0xE84393];
+const GOAL_POLE_HEIGHT = 24;
+const GOAL_STAR_RADIUS = 1.65;
+const GOAL_STAR_MIN_Y = GOAL_STAR_RADIUS + 0.35;
+const GOAL_STAR_MAX_Y = GOAL_POLE_HEIGHT - GOAL_STAR_RADIUS - 0.35;
 
 function colorGz(gz) {
   return WALL_COLORS[gz % WALL_COLORS.length];
@@ -239,24 +243,30 @@ function makeMaterial(params) {
 
   const fc = 0xFFD700;
   const finishMaterial = makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.3 });
-  const fMesh = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.9, 0.15, CELL * 0.9), finishMaterial);
+  const fMesh = new THREE.Mesh(new THREE.BoxGeometry(CELL * 1.05, 0.15, CELL * 1.05), finishMaterial);
   fMesh.position.set(levelData.end.x, 0.075, levelData.end.z);
   addMesh(fMesh);
-  const fLight = new THREE.PointLight(fc, 1.1, 6);
+  const fLight = new THREE.PointLight(fc, 1.25, 18);
   fLight.castShadow = false;
-  fLight.position.set(levelData.end.x, 15, levelData.end.z);
+  fLight.position.set(levelData.end.x, GOAL_STAR_MAX_Y + 1.5, levelData.end.z);
   addMesh(fLight);
   const fPillar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.65, 15, 0.65),
-    makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.15 })
+    new THREE.BoxGeometry(0.55, GOAL_POLE_HEIGHT, 0.55),
+    makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.2 })
   );
-  fPillar.position.set(levelData.end.x, 7.5, levelData.end.z);
+  fPillar.position.set(levelData.end.x, GOAL_POLE_HEIGHT / 2, levelData.end.z);
   addMesh(fPillar);
   const fStar = new THREE.Mesh(
-    new THREE.OctahedronGeometry(1),
-    makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.5 })
+    new THREE.OctahedronGeometry(GOAL_STAR_RADIUS),
+    makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.65 })
   );
-  fStar.position.set(levelData.end.x, 1, levelData.end.z);
+  fStar.position.set(levelData.end.x, GOAL_STAR_MIN_Y, levelData.end.z);
+  fStar.userData = {
+    minY: GOAL_STAR_MIN_Y,
+    maxY: GOAL_STAR_MAX_Y,
+    pulseScale: 0.1,
+    travelDuration: 4.5,
+  };
   addMesh(fStar);
 
   for (const { gx, gz } of levelData.lights.slice(0, 5)) {
@@ -271,6 +281,7 @@ function makeMaterial(params) {
 
   return {
     fLight,
+    fPillar,
     fStar,
     stats: {
       meshes: meshes.length,
