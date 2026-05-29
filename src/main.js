@@ -300,7 +300,10 @@ function animate() {
   ui.actualizarHud();
 
   if (levelRender) {
-    levelRender.fStar.position.y = 4.0 + Math.sin(t * 2) * 0.3;
+    const starBaseY = Number.isFinite(levelRender.fStar?.userData?.baseY)
+      ? levelRender.fStar.userData.baseY
+      : 4.0;
+    levelRender.fStar.position.y = starBaseY + Math.sin(t * 2) * 0.3;
     levelRender.fStar.rotation.y = t;
     levelRender.fLight.intensity = 1.2 + Math.sin(t * 3) * 0.35;
   }

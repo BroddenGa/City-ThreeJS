@@ -244,19 +244,19 @@ function makeMaterial(params) {
   addMesh(fMesh);
   const fLight = new THREE.PointLight(fc, 1.1, 6);
   fLight.castShadow = false;
-  fLight.position.set(levelData.end.x, 3.5, levelData.end.z);
+  fLight.position.set(levelData.end.x, 15, levelData.end.z);
   addMesh(fLight);
   const fPillar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 3.5, 0.2),
+    new THREE.BoxGeometry(0.65, 15, 0.65),
     makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.15 })
   );
-  fPillar.position.set(levelData.end.x, 1.75, levelData.end.z);
+  fPillar.position.set(levelData.end.x, 7.5, levelData.end.z);
   addMesh(fPillar);
   const fStar = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.5),
+    new THREE.OctahedronGeometry(1),
     makeMaterial({ color: fc, emissive: fc, emissiveIntensity: 0.5 })
   );
-  fStar.position.set(levelData.end.x, 4.0, levelData.end.z);
+  fStar.position.set(levelData.end.x, 1, levelData.end.z);
   addMesh(fStar);
 
   for (const { gx, gz } of levelData.lights.slice(0, 5)) {
